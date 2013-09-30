@@ -85,7 +85,7 @@ structure ParseFile :> PARSEFILE = struct
                       walkFctDec f acc fctb
                   | walkFctDec f acc (Ast.Fctb {def = fctexp, ...}) =
                       walkFctExp f acc fctexp 
-            in List.foldl (fn (dec, acc') => walkTree f acc' dec) acc fctdecs
+            in List.foldl (fn (dec, acc') => walkFctDec f acc' dec) acc fctdecs
             end)
         | Ast.AbsDec _ => (print (if debug then "abstr struct dec\n" else "");
                            f (dec, acc))
@@ -100,7 +100,7 @@ structure ParseFile :> PARSEFILE = struct
                 fun walkStrDec f acc (Ast.Strb {def = strexp, ...}) =
                       walkStrExp f acc strexp
                   | walkStrDec f acc (Ast.MarkStrb (strb, _)) = walkStrDec f acc strb
-            in List.foldl (fn (dec, acc') => walkTree f acc' dec) acc strdecs
+            in List.foldl (fn (dec, acc') => walkStrDec f acc' dec) acc strdecs
             end)
         | Ast.ExceptionDec _ => (print (if debug then "exn dec\n" else "");
                                  f (dec, acc))
