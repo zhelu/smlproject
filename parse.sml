@@ -54,7 +54,7 @@ structure ParseFile :> PARSEFILE = struct
                    else "");
              f (dec, acc))
         | Ast.SeqDec decs =>
-            List.foldl (fn (dec, acc) => walkTree f (f (dec, acc ))dec) acc decs
+            List.foldl (fn (dec, acc') => walkTree f acc' dec) acc decs
         | Ast.FixDec _ => (print (if debug then "fixity dec\n" else "");
                            f (dec, acc))
         | Ast.LocalDec (locals, body) =>
@@ -85,10 +85,7 @@ structure ParseFile :> PARSEFILE = struct
                       walkFctDec f acc fctb
                   | walkFctDec f acc (Ast.Fctb {def = fctexp, ...}) =
                       walkFctExp f acc fctexp 
-                fun walkList f acc [] = acc
-                  | walkList f acc (fctb :: rest) =
-                      walkList f (walkFctDec f acc fctb) rest
-            in walkList f (f (dec, acc)) fctdecs
+            in List.foldl (fn (dec, acc') => walkTree f acc' dec) acc fctdecs
             end)
         | Ast.AbsDec _ => (print (if debug then "abstr struct dec\n" else "");
                            f (dec, acc))
@@ -103,10 +100,7 @@ structure ParseFile :> PARSEFILE = struct
                 fun walkStrDec f acc (Ast.Strb {def = strexp, ...}) =
                       walkStrExp f acc strexp
                   | walkStrDec f acc (Ast.MarkStrb (strb, _)) = walkStrDec f acc strb
-                fun walkList f acc [] = acc
-                  | walkList f acc (strb :: rest) =
-                      walkList f (walkStrDec f acc strb) rest
-            in walkList f (f (dec, acc)) strdecs
+            in List.foldl (fn (dec, acc') => walkTree f acc' dec) acc strdecs
             end)
         | Ast.ExceptionDec _ => (print (if debug then "exn dec\n" else "");
                                  f (dec, acc))
