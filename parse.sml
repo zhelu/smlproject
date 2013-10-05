@@ -25,9 +25,19 @@ signature PARSEFILE = sig
   (* all declaration types except for MarkDec and SeqDec *)
   val allDec : dectype list
 
+  (* Maintains a count of items. See function getCountOf *)
+  type ''a counter
+
+  (* An empty counter *)
+  val emptyCounter : ''a counter
+
+  (* increment takes an item of type ''a and a counter on ''a and increases the
+   * count for the input object by the specified integer *)
+  val increment : ''a -> int -> ''a counter -> ''a counter
+
   (* countDec (curried) takes a list of declaration types (dectype) and a
    * parse tree and returns a list of declaration type / occurrence pairs. *)
-  val countDec : dectype list -> Ast.dec -> (dectype * int) list
+  val countDec : dectype list -> Ast.dec -> dectype counter
 
   (* findDec (curried) takes a list of declaration types (dectype) and a
    * a parse tree and returns a list of all declaration nodes that match the 
@@ -65,7 +75,18 @@ signature PARSEFILE = sig
 
   (* countExp (curried) takes a list of expression types (exptype) and a
    * parse tree and returns a list of expression type / occurrence pairs. *)
-  val countExp : exptype list -> Ast.dec -> (exptype * int) list
+  val countExp : exptype list -> Ast.dec -> exptype counter
+
+  (* Given a value and a counter, return the count of the input parameter *)
+  val getCountOf : ''a -> ''a counter -> int
+
+  (* expToExpType is essentially a one-to-one mapping between Ast.exp and
+   * exptype *)
+  val expToExpType : Ast.exp -> exptype
+
+  (* decToDecType is essentially a one-to-one mapping between Ast.dec and
+   * dectype *)
+  val decToDecType : Ast.dec -> dectype
 
 end
 
@@ -245,7 +266,20 @@ structure ParseFile :> PARSEFILE = struct
               in List.foldl (fn (rvb, acc) => walkRvb f acc rvb) acc' rvblist
               end))
 
-  type 'a counter = ('a * int) list
+  type ''a counter = (''a * int) list
+
+  (* see signature *)
+  fun getCountOf x [] = 0
+    | getCountOf x ((y, c) :: rest) = if x = y then c else getCountOf x rest
+
+  (* see signature *)
+  fun increment x i [] = [(x, i)]
+    | increment x i ((y, count) :: rest) =
+        if (x = y) then (y, count + i) :: rest
+        else (y, count) :: increment x i rest
+
+  (* see signature *)
+  val emptyCounter = []
 
   datatype dectype = MARKDEC | OPENDEC | TYPEDEC | OVLDDEC | SEQDEC | FIXDEC
                    | LOCALDEC | FSIGDEC | SIGDEC | FCTDEC | ABSDEC | STRDEC
@@ -258,8 +292,6 @@ structure ParseFile :> PARSEFILE = struct
                    | CONSTRAINTEXP | HANDLEEXP | RAISEEXP | IFEXP | ANDALSOEXP
                    | ORELSEEXP | WHILEEXP | MARKEXP | VECTOREXP
 
-  (* expToExpType is essentially a one-to-one mapping between Ast.exp and
-   * exptype *)
   fun expToExpType (Ast.VarExp _) = VAREXP
     | expToExpType (Ast.FnExp _) = FNEXP
     | expToExpType (Ast.FlatAppExp _) = FLATAPPEXP
@@ -286,8 +318,6 @@ structure ParseFile :> PARSEFILE = struct
     | expToExpType (Ast.MarkExp _) = MARKEXP
     | expToExpType (Ast.VectorExp _) = VECTOREXP
 
-  (* decToDecType is essentially a one-to-one mapping between Ast.dec and
-   * dectype *)
   fun decToDecType (Ast.ValDec _) = VALDEC
     | decToDecType (Ast.ValrecDec _) = VALRECDEC
     | decToDecType (Ast.FunDec _) = FUNDEC
@@ -308,25 +338,12 @@ structure ParseFile :> PARSEFILE = struct
     | decToDecType (Ast.FixDec _) = FIXDEC
     | decToDecType (Ast.MarkDec _) = MARKDEC
 
-  (* type check *)
-  val _ = op decToDecType : Ast.dec -> dectype
-
-  (* increment takes an item of type ''a and a counter on ''a and increases the
-   * count for the input object *)
-  fun increment x [] = [(x, 1)]
-    | increment x ((y, count) :: rest) =
-        if (x = y) then (y, count + 1) :: rest
-        else (y, count) :: increment x rest
-
-  (* type check *)
-  val _ = op increment : ''a -> ''a counter -> ''a counter
-
   (* see signature *)
   fun countDec countedDecs parseTree =
     foldDecs (fn (dec, acc) =>
                (case (List.find (fn x => x = decToDecType dec) countedDecs)
                   of NONE => acc
-                   | SOME _ => increment (decToDecType dec) acc)) [] parseTree
+                   | SOME _ => increment (decToDecType dec) 1 acc)) [] parseTree
 
   (* see signature *)
   fun findDec targetDecs parseTree =
@@ -346,11 +363,24 @@ structure ParseFile :> PARSEFILE = struct
         let fun findFirstClause (Ast.MarkFb (fb, _)) = findFirstClause fb
               | findFirstClause (Ast.Fb (clause::_, _)) = clause
             (* Given an Ast.Clause, extract the first pattern *)
-            fun findFirstPattern (Ast.Clause {pats = p::_,...}) = p
-            (* Pull the function name from the pattern *)
-            fun findName {fixity = SOME (symbol),
-                           item = _, region = _} = Symbol.name symbol
-        in (findName o findFirstPattern o findFirstClause) fb
+            fun findPatterns (Ast.Clause {pats = ps,...}) = ps
+            (* Pull the function name from the pattern using fixity *)
+            fun findName ({fixity = SOME (symbol),
+                            item = _, region = _} :: ps) =
+                  SOME (Symbol.name symbol)
+              | findName (_ :: ps) = findName ps
+              | findName [] = NONE
+            (* If fixity is defined for any pattern, use first symbol *)
+            fun getFirstVarSymbol ({fixity = _, region = _,
+                                     item = Ast.MarkPat (Ast.VarPat s,_)} :: ps)
+                  = Symbol.name (hd s)
+              | getFirstVarSymbol (_ :: ps) = getFirstVarSymbol ps
+              | getFirstVarSymbol _ =
+                  let exception Impossible in raise Impossible end
+        in (case (findName o findPatterns o findFirstClause) fb
+              of SOME name => name
+               | NONE =>
+                   (getFirstVarSymbol o findPatterns o findFirstClause) fb)
         end
     | getFunName _ = ""
 
@@ -515,5 +545,5 @@ structure ParseFile :> PARSEFILE = struct
     foldExprs (fn (exp, acc) =>
                 (case (List.find (fn x => x = expToExpType exp) countedExps)
                    of NONE => acc
-                    | SOME _ => increment (expToExpType exp) acc)) [] parseTree
+                    | SOME _ => increment (expToExpType exp) 1 acc)) [] parseTree
 end
