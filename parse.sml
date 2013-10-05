@@ -1,16 +1,26 @@
 CM.make "compiler/Parse/parser.cm";
 
 signature PARSEFILE = sig
+
   (* readFile filename returns the parse tree resulting from reading the source
    * in filename *)
   val readFile : string -> Ast.dec
-  (* foldTree is a fold-like function for walking a parse tree *)
-  val foldTree : (Ast.dec * 'a -> 'a) -> 'a -> Ast.dec -> 'a
+
+  (* foldDecs is a fold-like function for walking a parse tree. The tree-
+   * traversal is DFS. *)
+  val foldDecs : (Ast.dec * 'a -> 'a) -> 'a -> Ast.dec -> 'a
+
   (* algebraic datatype to locally describe the types of declarations *)
   datatype dectype = MARKDEC | OPENDEC | TYPEDEC | OVLDDEC | SEQDEC | FIXDEC
                    | LOCALDEC | FSIGDEC | SIGDEC | FCTDEC | ABSDEC | STRDEC
                    | EXCEPTIONDEC | ABSTYPEDEC | DATAREPLDEC | DATATYPEDEC
                    | FUNDEC | VALDEC | VALRECDEC
+
+  datatype exptype = VAREXP | FNEXP | FLATAPPEXP | APPEXP | CASEEXP | LETEXP
+                   | SEQEXP | INTEXP | WORDEXP | REALEXP | STRINGEXP | CHAREXP
+                   | RECORDEXP | LISTEXP | TUPLEEXP | SELECTOREXP 
+                   | CONSTRAINTEXP | HANDLEEXP | RAISEEXP | IFEXP | ANDALSOEXP
+                   | ORELSEEXP | WHILEEXP | MARKEXP | VECTOREXP
 
   (* all declaration types except for MarkDec and SeqDec *)
   val allDec : dectype list
@@ -20,8 +30,8 @@ signature PARSEFILE = sig
   val countDec : dectype list -> Ast.dec -> (dectype * int) list
 
   (* findDec (curried) takes a list of declaration types (dectype) and a
-   * a parse tree and returns a list of all nodes that match the input list
-   * of types. *)
+   * a parse tree and returns a list of all declaration nodes that match the 
+   * input list of types. *)
   val findDec : dectype list -> Ast.dec -> Ast.dec list
 
   (* Given a declaration of FunDec, return the name of function we're binding *)
@@ -34,6 +44,28 @@ signature PARSEFILE = sig
 
   (* Given a parse tree, find all recursive functions *)
   val getRecursiveFun : Ast.dec -> Ast.dec list
+
+  (* foldExprs is a fold-like function on expressions. The order of evaluation
+   * is to get all declarations and then examine the declarations for exprs
+   * via DFS. *)
+  val foldExprs : (Ast.exp * 'a -> 'a) -> 'a -> Ast.dec -> 'a
+
+  (* list of expressions we might be interested in when analyzing code. 
+   * Currently includes FnExp, CaseExp, LetExp, SelectorExp,
+   * ConstraintExp, HandleExp, RaiseExp, WhileExp, VectorExp. *)
+  val keyExp : exptype list
+
+  (* list of expressions with the exception of MarkExp *)
+  val allExp : exptype list
+
+  (* findExp (curried) takes a list of expression types (exptype) and a
+   * a parse tree and returns a list of all expression nodes that match the 
+   * input list of types. *)
+  val findExp : exptype list -> Ast.dec -> Ast.exp list
+
+  (* countExp (curried) takes a list of expression types (exptype) and a
+   * parse tree and returns a list of expression type / occurrence pairs. *)
+  val countExp : exptype list -> Ast.dec -> (exptype * int) list
 
 end
 
@@ -49,11 +81,11 @@ structure ParseFile :> PARSEFILE = struct
     end
 
   (* see signature *)
-  fun foldTree f acc dec =
+  fun foldDecs f acc dec =
     (case dec
        of Ast.MarkDec (m, r) =>
             let val acc' = f (dec, acc)
-            in foldTree f acc' m
+            in foldDecs f acc' m
             end
         | Ast.OpenDec paths =>
             (print (if debug then (Int.toString (List.length paths)
@@ -68,14 +100,14 @@ structure ParseFile :> PARSEFILE = struct
                    else "");
              f (dec, acc))
         | Ast.SeqDec decs =>
-            List.foldl (fn (dec, acc') => foldTree f acc' dec) acc decs
+            List.foldl (fn (dec, acc') => foldDecs f acc' dec) acc decs
         | Ast.FixDec _ => (print (if debug then "fixity dec\n" else "");
                            f (dec, acc))
         | Ast.LocalDec (locals, body) =>
             (print (if debug then "local dec\n" else "");
              let val acc' = f (dec, acc)
-                 val newAcc = foldTree f acc' locals
-             in foldTree f newAcc body
+                 val newAcc = foldDecs f acc' locals
+             in foldDecs f newAcc body
              end)
         | Ast.FsigDec _ => (print (if debug then "fsig dec\n" else "");
                             f (dec, acc))
@@ -84,12 +116,12 @@ structure ParseFile :> PARSEFILE = struct
         | Ast.FctDec fctdecs =>
            (print (if debug then "funsig dec\n" else "");
                 (* walkStrExp extracts declarations from a structure expression
-                 * by applying foldTree on any Ast.dec types it finds *)
-            let fun walkStrExp f acc (Ast.BaseStr d) = foldTree f acc d
+                 * by applying foldDecs on any Ast.dec types it finds *)
+            let fun walkStrExp f acc (Ast.BaseStr d) = foldDecs f acc d
                   | walkStrExp f acc (Ast.MarkStr (strexp, _)) =
                       walkStrExp f acc strexp
                   | walkStrExp f acc (Ast.LetStr (letdec, strexp)) =
-                      walkStrExp f (foldTree f acc letdec) strexp
+                      walkStrExp f (foldDecs f acc letdec) strexp
                   | walkStrExp f acc _ = acc
                 (* walkFctExp pulls Ast.dec types out of a functor expression
                  * by processing the sub structure expression *)
@@ -98,7 +130,7 @@ structure ParseFile :> PARSEFILE = struct
                   | walkFctExp f acc (Ast.BaseFct {body = strexp,...}) = 
                       walkStrExp f acc strexp
                   | walkFctExp f acc (Ast.LetFct (letdec, fctexp)) =
-                      walkFctExp f (foldTree f acc letdec) fctexp
+                      walkFctExp f (foldDecs f acc letdec) fctexp
                   | walkFctExp f acc _ = acc
                 (* walkFctDec pulls Ast.dec types out of a functor declaration
                  * by processing the sub functor expression *)
@@ -113,12 +145,12 @@ structure ParseFile :> PARSEFILE = struct
         | Ast.StrDec strdecs =>
            (print (if debug then "structure dec\n" else "");
                 (* walkStrExp extracts declarations from a structure expression
-                 * by applying foldTree on any Ast.dec types it finds *)
-            let fun walkStrExp f acc (Ast.BaseStr d) = foldTree f acc d
+                 * by applying foldDecs on any Ast.dec types it finds *)
+            let fun walkStrExp f acc (Ast.BaseStr d) = foldDecs f acc d
                   | walkStrExp f acc (Ast.MarkStr (strexp, _)) =
                       walkStrExp f acc strexp
                   | walkStrExp f acc (Ast.LetStr (letdec, strexp)) =
-                      walkStrExp f (foldTree f acc letdec) strexp
+                      walkStrExp f (foldDecs f acc letdec) strexp
                   | walkStrExp f acc _ = acc
                 (* walkStrDec extracts Ast.dec types from a structure
                  * declaration by processing the sub structure expression *)
@@ -133,7 +165,7 @@ structure ParseFile :> PARSEFILE = struct
                                  f (dec, acc))
         | Ast.AbstypeDec {body = d, ...} =>
             (print (if debug then "abst type dec\n" else "");
-             foldTree f (f (dec, acc)) d) 
+             foldDecs f (f (dec, acc)) d) 
         | Ast.DataReplDec _ =>
             (print (if debug then "data replication dec\n" else "");
              f (dec, acc))
@@ -144,7 +176,7 @@ structure ParseFile :> PARSEFILE = struct
             (print (if debug then "fun dec\n" else "");
                   (* walkExp gets Ast.decs from an expression *)
               let fun walkExp f acc (Ast.LetExp {dec = d, ...}) =
-                        foldTree f acc d
+                        foldDecs f acc d
                     | walkExp f acc (Ast.MarkExp (exp, _)) =
                         walkExp f acc exp
                     | walkExp f acc (Ast.SeqExp exps) =
@@ -172,7 +204,7 @@ structure ParseFile :> PARSEFILE = struct
             (print (if debug then "val dec\n" else "");
                   (* walkExp gets Ast.decs from an expression *)
               let fun walkExp f acc (Ast.LetExp {dec = d, ...}) =
-                        foldTree f acc d
+                        foldDecs f acc d
                     | walkExp f acc (Ast.MarkExp (exp, _)) =
                         walkExp f acc exp
                     | walkExp f acc (Ast.SeqExp exps) =
@@ -194,7 +226,7 @@ structure ParseFile :> PARSEFILE = struct
             (print (if debug then "valrec dec\n" else "");
                   (* walkExp gets Ast.decs from an expression *)
               let fun walkExp f acc (Ast.LetExp {dec = d, ...}) =
-                        foldTree f acc d
+                        foldDecs f acc d
                     | walkExp f acc (Ast.MarkExp (exp, _)) =
                         walkExp f acc exp
                     | walkExp f acc (Ast.SeqExp exps) =
@@ -220,7 +252,41 @@ structure ParseFile :> PARSEFILE = struct
                    | EXCEPTIONDEC | ABSTYPEDEC | DATAREPLDEC | DATATYPEDEC
                    | FUNDEC | VALDEC | VALRECDEC
 
-  (* decToDecType is a essentially a one-to-one mapping between Ast.dec and
+  datatype exptype = VAREXP | FNEXP | FLATAPPEXP | APPEXP | CASEEXP | LETEXP
+                   | SEQEXP | INTEXP | WORDEXP | REALEXP | STRINGEXP | CHAREXP
+                   | RECORDEXP | LISTEXP | TUPLEEXP | SELECTOREXP 
+                   | CONSTRAINTEXP | HANDLEEXP | RAISEEXP | IFEXP | ANDALSOEXP
+                   | ORELSEEXP | WHILEEXP | MARKEXP | VECTOREXP
+
+  (* expToExpType is essentially a one-to-one mapping between Ast.exp and
+   * exptype *)
+  fun expToExpType (Ast.VarExp _) = VAREXP
+    | expToExpType (Ast.FnExp _) = FNEXP
+    | expToExpType (Ast.FlatAppExp _) = FLATAPPEXP
+    | expToExpType (Ast.AppExp _) = APPEXP
+    | expToExpType (Ast.CaseExp _) = CASEEXP
+    | expToExpType (Ast.LetExp _) = LETEXP
+    | expToExpType (Ast.SeqExp _) = SEQEXP
+    | expToExpType (Ast.IntExp _) = INTEXP
+    | expToExpType (Ast.WordExp _) = WORDEXP
+    | expToExpType (Ast.RealExp _) = REALEXP
+    | expToExpType (Ast.StringExp _) = STRINGEXP
+    | expToExpType (Ast.CharExp _) = CHAREXP
+    | expToExpType (Ast.RecordExp _) = RECORDEXP
+    | expToExpType (Ast.ListExp _) = LISTEXP
+    | expToExpType (Ast.TupleExp _) = TUPLEEXP
+    | expToExpType (Ast.SelectorExp _) = SELECTOREXP
+    | expToExpType (Ast.ConstraintExp _) = CONSTRAINTEXP
+    | expToExpType (Ast.HandleExp _) = HANDLEEXP
+    | expToExpType (Ast.RaiseExp _) = RAISEEXP
+    | expToExpType (Ast.IfExp _) = IFEXP
+    | expToExpType (Ast.AndalsoExp _) = ANDALSOEXP
+    | expToExpType (Ast.OrelseExp _) = ORELSEEXP
+    | expToExpType (Ast.WhileExp _) = WHILEEXP
+    | expToExpType (Ast.MarkExp _) = MARKEXP
+    | expToExpType (Ast.VectorExp _) = VECTOREXP
+
+  (* decToDecType is essentially a one-to-one mapping between Ast.dec and
    * dectype *)
   fun decToDecType (Ast.ValDec _) = VALDEC
     | decToDecType (Ast.ValrecDec _) = VALRECDEC
@@ -257,23 +323,17 @@ structure ParseFile :> PARSEFILE = struct
 
   (* see signature *)
   fun countDec countedDecs parseTree =
-    foldTree (fn (dec, acc) =>
+    foldDecs (fn (dec, acc) =>
                (case (List.find (fn x => x = decToDecType dec) countedDecs)
                   of NONE => acc
-                   | SOME d => increment (decToDecType dec) acc)) [] parseTree
-
-  (* type check *)
-  val _ = op countDec : dectype list -> Ast.dec -> dectype counter
+                   | SOME _ => increment (decToDecType dec) acc)) [] parseTree
 
   (* see signature *)
   fun findDec targetDecs parseTree =
-    foldTree (fn (dec, acc) =>
+    foldDecs (fn (dec, acc) =>
                (case (List.find (fn x => x = decToDecType dec) targetDecs)
                   of NONE => acc
-                   | SOME d => dec :: acc)) [] parseTree
-
-  (* type check *)
-  val _ = op findDec : dectype list -> Ast.dec -> Ast.dec list
+                   | SOME _ => dec :: acc)) [] parseTree
 
   (* see signature *)
   val allDec = [OPENDEC, TYPEDEC, OVLDDEC, FIXDEC, LOCALDEC, FSIGDEC, SIGDEC,
@@ -288,8 +348,8 @@ structure ParseFile :> PARSEFILE = struct
             (* Given an Ast.Clause, extract the first pattern *)
             fun findFirstPattern (Ast.Clause {pats = p::_,...}) = p
             (* Pull the function name from the pattern *)
-            fun findName {fixity = SOME (Symbol.SYMBOL (_, name)),
-                           item=_, region=_} = name
+            fun findName {fixity = SOME (symbol),
+                           item = _, region = _} = Symbol.name symbol
         in (findName o findFirstPattern o findFirstClause) fb
         end
     | getFunName _ = ""
@@ -343,4 +403,117 @@ structure ParseFile :> PARSEFILE = struct
   fun getRecursiveFun parseTree =
         List.filter isRecursiveFun (findDec [FUNDEC] parseTree)
 
+  (* see signature *)
+  val keyExp = [FNEXP, CASEEXP, LETEXP, SELECTOREXP, CONSTRAINTEXP,
+                HANDLEEXP, RAISEEXP, WHILEEXP, VECTOREXP]
+
+  (* see signature *)
+  val allExp = [VAREXP, FNEXP, FLATAPPEXP, APPEXP, CASEEXP, LETEXP, INTEXP,
+                WORDEXP, REALEXP, STRINGEXP, CHAREXP, SEQEXP, RECORDEXP,
+                LISTEXP, TUPLEEXP, SELECTOREXP, CONSTRAINTEXP, HANDLEEXP,
+                RAISEEXP, IFEXP, ANDALSOEXP, ORELSEEXP, WHILEEXP, VECTOREXP]
+
+  (* see signuature *)
+  fun foldExprs f acc tree =
+    let val decs = findDec allDec tree
+        (* drill down into declarations to find top-level expressions in that
+         * declaration *)
+        fun findExpInDec (Ast.ValDec (vblist, _)) =
+              let fun findExpInVb (Ast.Vb {exp = e,...}) = e
+                    | findExpInVb (Ast.MarkVb (vb, _)) = findExpInVb vb
+              in List.foldl (fn (vb, acc) => findExpInVb vb :: acc) [] vblist
+              end
+          | findExpInDec (Ast.ValrecDec (rvblist, _)) =
+              let fun findExpInRvb (Ast.Rvb {exp = e,...}) = e
+                    | findExpInRvb (Ast.MarkRvb (rvb, _)) =
+                        findExpInRvb rvb
+              in List.foldl (fn (rvb, acc) => findExpInRvb rvb :: acc)
+                   [] rvblist
+              end
+          | findExpInDec (Ast.FunDec (fblist, _)) =
+              let fun findExpInFb (Ast.Fb (clauses, _)) =
+                    List.foldl (fn (Ast.Clause {exp = e, ...}, acc) => e :: acc)
+                      [] clauses
+                    | findExpInFb (Ast.MarkFb (fb, _)) = findExpInFb fb
+              in List.foldl (fn (fb, acc) => findExpInFb fb @ acc) [] fblist
+              end
+          | findExpInDec (Ast.OvldDec (_, _, exps)) = exps
+          | findExpInDec _ = []
+        val topExps = List.foldl (op @) [] (map findExpInDec decs)
+        (* DFS on expr to find subexpressions *)
+        fun walkExprs f acc e =
+          let val acc' = f (e, acc)
+          in (case e
+                of (Ast.FnExp rules) =>
+                     List.foldl (fn (Ast.Rule {exp = exp,...}, acc) =>
+                                  walkExprs f acc exp) acc' rules
+                 | (Ast.FlatAppExp expFixitems) =>
+                     List.foldl (fn ({item = e, fixity = _, region = _}, acc) =>
+                                  walkExprs f acc e)
+                       acc' expFixitems
+                 | (Ast.AppExp {function = fexp, argument = arg}) =>
+                     let val acc'' = walkExprs f acc' fexp
+                     in walkExprs f acc'' arg
+                     end
+                 | (Ast.CaseExp {expr = exp, rules = rules}) =>
+                     let val acc'' = walkExprs f acc' exp
+                     in List.foldl (fn (Ast.Rule {exp = exp,...}, acc) =>
+                                     walkExprs f acc exp) acc' rules
+                     end
+                 | (Ast.LetExp {expr = exp,...}) => walkExprs f acc' exp
+                 | (Ast.SeqExp exps) =>
+                     List.foldl (fn (e, acc) => walkExprs f acc e) acc' exps
+                 | (Ast.RecordExp symbolExpPairs) =>
+                     List.foldl (fn ((_, e), acc) => walkExprs f acc e) acc'
+                       symbolExpPairs
+                 | (Ast.ListExp exps) =>
+                     List.foldl (fn (e, acc) => walkExprs f acc e) acc' exps
+                 | (Ast.TupleExp exps) =>
+                     List.foldl (fn (e, acc) => walkExprs f acc e) acc' exps
+                 | (Ast.ConstraintExp {expr = exp,...}) =>
+                     walkExprs f acc' exp
+                 | (Ast.HandleExp {expr = exp, rules = rules}) =>
+                     let val acc'' = walkExprs f acc' exp
+                     in List.foldl (fn (Ast.Rule {exp = exp,...}, acc) =>
+                                  walkExprs f acc exp) acc' rules
+                     end
+                 | (Ast.RaiseExp exp) => walkExprs f acc' exp
+                 | (Ast.IfExp {test = t, thenCase = tt, elseCase = tf}) =>
+                     let val acc1 = walkExprs f acc' t
+                         val acc2 = walkExprs f acc1 tt
+                     in walkExprs f acc2 tf
+                     end
+                 | (Ast.AndalsoExp (e1, e2)) =>
+                     let val acc1 = walkExprs f acc' e1
+                     in walkExprs f acc1 e2
+                     end
+                 | (Ast.OrelseExp (e1, e2)) =>
+                     let val acc1 = walkExprs f acc' e1
+                     in walkExprs f acc1 e2
+                     end
+                 | (Ast.WhileExp {test = t, expr = body}) =>
+                     let val acc'' = walkExprs f acc' t
+                     in walkExprs f acc'' body
+                     end
+                 | (Ast.MarkExp (exp,_)) => walkExprs f acc' exp
+                 | (Ast.VectorExp exps) =>
+                     List.foldl (fn (e, acc) => walkExprs f acc e) acc' exps
+                 | _ => acc')
+          end
+    in List.foldl (fn (e, a) => walkExprs f a e) acc topExps
+    end
+
+  (* see signature *)
+  fun findExp targetExps parseTree =
+    foldExprs (fn (exp, acc) =>
+                (case (List.find (fn x => x = expToExpType exp) targetExps)
+                   of NONE => acc
+                    | SOME _ => exp :: acc)) [] parseTree
+
+  (* see signature *)
+  fun countExp countedExps parseTree =
+    foldExprs (fn (exp, acc) =>
+                (case (List.find (fn x => x = expToExpType exp) countedExps)
+                   of NONE => acc
+                    | SOME _ => increment (expToExpType exp) acc)) [] parseTree
 end
