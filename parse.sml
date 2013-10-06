@@ -368,6 +368,10 @@ structure ParseFile :> PARSEFILE = struct
             fun findName ({fixity = SOME (symbol),
                             item = _, region = _} :: ps) =
                   SOME (Symbol.name symbol)
+              | findName ({fixity = NONE,
+                            item = Ast.MarkPat (Ast.FlatAppPat ps, _),
+                            region = _} :: _) =
+                  findName ps
               | findName (_ :: ps) = findName ps
               | findName [] = NONE
             (* If fixity is defined for any pattern, use first symbol *)
