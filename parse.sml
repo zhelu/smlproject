@@ -165,7 +165,8 @@ structure ParseFile :> PARSEFILE = struct
                       walkFctDec f acc fctb
                   | walkFctDec f acc (Ast.Fctb {def = fctexp, ...}) =
                       walkFctExp f acc fctexp 
-            in List.foldl (fn (dec, acc') => walkFctDec f acc' dec) acc fctdecs
+                val acc' = f (dec, acc)
+            in List.foldl (fn (dec, acc) => walkFctDec f acc dec) acc' fctdecs
             end)
         | Ast.AbsDec _ => (print (if debug then "abstr struct dec\n" else "");
                            f (dec, acc))
