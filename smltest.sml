@@ -21,7 +21,7 @@ val parseTrees =
                                | NONE => acc)
                         end) [] files;
 
-val decList = List.foldl (op @) []
+val decList = List.concat
                 (map (fn p => ParseFile.findDec ParseFile.allDec p) parseTrees);
 
 val numDecs = length decList;
@@ -32,7 +32,7 @@ val decCounts = List.foldl (fn (dtype,acc) =>
                                                        dtype)
                                         decList)) :: acc) [] ParseFile.allDec;
 
-val expList = List.foldl (op @) []
+val expList = List.concat
                 (map (fn p => ParseFile.findExp ParseFile.keyExp p) parseTrees);
 
 val expCounts = List.foldl (fn (etype,acc) =>
@@ -43,3 +43,20 @@ val expCounts = List.foldl (fn (etype,acc) =>
                                         expList)) :: acc) [] ParseFile.keyExp;
 
 val numRecFuns = length (List.filter ParseFile.isRecursiveFun decList);
+val allFuns = List.concat
+                (map (fn p => ParseFile.findDec [ParseFile.FUNDEC] p) parseTrees);
+
+fun getNumberOfClauses (Ast.FunDec ([(Ast.MarkFb (Ast.Fb (cs,_),_))],_)) = 
+      length cs
+  | getNumberOfClauses _ = 0;
+
+val vnames = List.concat (map (fn x => ParseFile.getAppVars x) parseTrees);
+
+(*
+val maps =
+  List.foldl (fn (x,acc) => ) 0 vars;
+
+val folds
+
+val filters
+*)

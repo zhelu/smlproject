@@ -26,7 +26,7 @@ signature PARSEFILE = sig
   val allDec : dectype list
 
   (* Maintains a count of items. See function getCountOf *)
-  type ''a counter
+  type ''a counter = (''a * int) list
 
   (* An empty counter *)
   val emptyCounter : ''a counter
@@ -87,6 +87,12 @@ signature PARSEFILE = sig
   (* decToDecType is essentially a one-to-one mapping between Ast.dec and
    * dectype *)
   val decToDecType : Ast.dec -> dectype
+
+  (* Given a Ast.FunDec, returns the number of clauses to define the fuction *)
+  val getNumberOfClauses : Ast.dec -> int
+
+  (* Given an AST, returns a list of all names of variables in functions *)
+  val getAppVars : Ast.dec -> string list
 
 end
 
@@ -473,7 +479,7 @@ structure ParseFile :> PARSEFILE = struct
               end
           | findExpInDec (Ast.OvldDec (_, _, exps)) = exps
           | findExpInDec _ = []
-        val topExps = List.foldl (op @) [] (map findExpInDec decs)
+        val topExps = List.concat (map findExpInDec decs)
         (* DFS on expr to find subexpressions *)
         fun walkExprs f acc e =
           let val acc' = f (e, acc)
@@ -550,4 +556,34 @@ structure ParseFile :> PARSEFILE = struct
                 (case (List.find (fn x => x = expToExpType exp) countedExps)
                    of NONE => acc
                     | SOME _ => increment (expToExpType exp) 1 acc)) [] parseTree
+
+  (* see signature *)
+  fun getNumberOfClauses (Ast.FunDec ([(Ast.MarkFb (Ast.Fb (cs,_),_))],_)) = 
+      length cs
+  | getNumberOfClauses _ = 0;
+
+  fun getAppVars parseTree =
+        (* get all applications *)
+    let val apps = map (fn (Ast.FlatAppExp items) => items)
+                         (findExp [FLATAPPEXP] parseTree)
+        (* items in the fixitem *)
+        val items = List.concat apps
+        (* Get all VarExps used in function application *)
+        val vars = List.filter (fn e => expToExpType e = VAREXP)
+                     (map (fn ({item = Ast.MarkExp (e, _),region=_,fixity=_}) => e)
+                       items)
+        (* Extract the symbol name (unqualified, i.e. structure info is
+           discarded) *)
+        fun getVarName (Ast.VarExp [s]) n =
+              let val sym = Symbol.name s
+              in if n = "" then sym else (n ^ "." ^ sym)
+              end
+          | getVarName (Ast.VarExp (s :: ss)) n =
+              let val sym = Symbol.name s
+              in if n = "" then getVarName (Ast.VarExp ss) sym
+                 else getVarName (Ast.VarExp ss) (n ^ "." ^ sym)
+              end
+    in map (fn x => getVarName x "") vars
+    end
+
 end
