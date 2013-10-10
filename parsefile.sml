@@ -103,6 +103,9 @@ signature PARSEFILE = sig
   (* Given a counter of a's, return a list of pairs of a's and their counts *)
   val counterToList : 'a counter -> ('a * int) list
 
+  (* Given a parsetree, find the top level declaration *)
+  val getTopLevelDec : Ast.dec -> Ast.dec list
+
 end
 
 structure ParseFile :> PARSEFILE = struct
@@ -647,5 +650,11 @@ structure ParseFile :> PARSEFILE = struct
     | expTypeToString WHILEEXP = "WhileExp"
     | expTypeToString MARKEXP = "MarkExp"
     | expTypeToString VECTOREXP = "VectorExp"
+
+  (* see signature *)
+  fun getTopLevelDec (Ast.MarkDec (d, _)) = getTopLevelDec d
+    | getTopLevelDec (Ast.SeqDec decs) =
+        map getTopLevelDec decs
+    | getTopLevelDec d = [d]
 
 end
