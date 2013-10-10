@@ -18,9 +18,15 @@ signature PARSEFILE = sig
 
   datatype exptype = VAREXP | FNEXP | FLATAPPEXP | APPEXP | CASEEXP | LETEXP
                    | SEQEXP | INTEXP | WORDEXP | REALEXP | STRINGEXP | CHAREXP
-                   | RECORDEXP | LISTEXP | TUPLEEXP | SELECTOREXP 
+                   | RECORDEXP | LISTEXP | TUPLEEXP | SELECTOREXP
                    | CONSTRAINTEXP | HANDLEEXP | RAISEEXP | IFEXP | ANDALSOEXP
                    | ORELSEEXP | WHILEEXP | MARKEXP | VECTOREXP
+
+  (* get string equivalent of a dec type *)
+  val decTypeToString : dectype -> string
+
+  (* get string equivalent of a exp type *)
+  val expTypeToString : exptype -> string
 
   (* all declaration types except for MarkDec and SeqDec *)
   val allDec : dectype list
@@ -40,7 +46,7 @@ signature PARSEFILE = sig
   val countDec : dectype list -> Ast.dec -> dectype counter
 
   (* findDec (curried) takes a list of declaration types (dectype) and a
-   * a parse tree and returns a list of all declaration nodes that match the 
+   * a parse tree and returns a list of all declaration nodes that match the
    * input list of types. *)
   val findDec : dectype list -> Ast.dec -> Ast.dec list
 
@@ -60,7 +66,7 @@ signature PARSEFILE = sig
    * via DFS. *)
   val foldExprs : (Ast.exp * 'a -> 'a) -> 'a -> Ast.dec -> 'a
 
-  (* list of expressions we might be interested in when analyzing code. 
+  (* list of expressions we might be interested in when analyzing code.
    * Currently includes FnExp, CaseExp, LetExp, SelectorExp,
    * ConstraintExp, HandleExp, RaiseExp, WhileExp, VectorExp. *)
   val keyExp : exptype list
@@ -69,7 +75,7 @@ signature PARSEFILE = sig
   val allExp : exptype list
 
   (* findExp (curried) takes a list of expression types (exptype) and a
-   * a parse tree and returns a list of all expression nodes that match the 
+   * a parse tree and returns a list of all expression nodes that match the
    * input list of types. *)
   val findExp : exptype list -> Ast.dec -> Ast.exp list
 
@@ -94,12 +100,15 @@ signature PARSEFILE = sig
   (* Given an AST, returns a list of all names of variables in functions *)
   val getAppVars : Ast.dec -> string list
 
+  (* Given a counter of a's, return a list of pairs of a's and their counts *)
+  val counterToList : 'a counter -> ('a * int) list
+
 end
 
 structure ParseFile :> PARSEFILE = struct
 
   val debug = false
-  
+
   (* see signature *)
   fun readFile filename =
     let val src = Source.newSource (filename, TextIO.openIn filename, false,
@@ -154,7 +163,7 @@ structure ParseFile :> PARSEFILE = struct
                  * by processing the sub structure expression *)
                 fun walkFctExp f acc (Ast.MarkFct (fctexp, _)) =
                       walkFctExp f acc fctexp
-                  | walkFctExp f acc (Ast.BaseFct {body = strexp,...}) = 
+                  | walkFctExp f acc (Ast.BaseFct {body = strexp,...}) =
                       walkStrExp f acc strexp
                   | walkFctExp f acc (Ast.LetFct (letdec, fctexp)) =
                       walkFctExp f (foldDecs f acc letdec) fctexp
@@ -164,7 +173,7 @@ structure ParseFile :> PARSEFILE = struct
                 fun walkFctDec f acc (Ast.MarkFctb (fctb, _)) =
                       walkFctDec f acc fctb
                   | walkFctDec f acc (Ast.Fctb {def = fctexp, ...}) =
-                      walkFctExp f acc fctexp 
+                      walkFctExp f acc fctexp
                 val acc' = f (dec, acc)
             in List.foldl (fn (dec, acc) => walkFctDec f acc dec) acc' fctdecs
             end)
@@ -193,7 +202,7 @@ structure ParseFile :> PARSEFILE = struct
                                  f (dec, acc))
         | Ast.AbstypeDec {body = d, ...} =>
             (print (if debug then "abst type dec\n" else "");
-             foldDecs f (f (dec, acc)) d) 
+             foldDecs f (f (dec, acc)) d)
         | Ast.DataReplDec _ =>
             (print (if debug then "data replication dec\n" else "");
              f (dec, acc))
@@ -295,7 +304,7 @@ structure ParseFile :> PARSEFILE = struct
 
   datatype exptype = VAREXP | FNEXP | FLATAPPEXP | APPEXP | CASEEXP | LETEXP
                    | SEQEXP | INTEXP | WORDEXP | REALEXP | STRINGEXP | CHAREXP
-                   | RECORDEXP | LISTEXP | TUPLEEXP | SELECTOREXP 
+                   | RECORDEXP | LISTEXP | TUPLEEXP | SELECTOREXP
                    | CONSTRAINTEXP | HANDLEEXP | RAISEEXP | IFEXP | ANDALSOEXP
                    | ORELSEEXP | WHILEEXP | MARKEXP | VECTOREXP
 
@@ -365,7 +374,7 @@ structure ParseFile :> PARSEFILE = struct
                 DATATYPEDEC, FUNDEC, VALDEC, VALRECDEC]
 
   (* see signature *)
-  fun getFunName (Ast.FunDec (fb::_, _)) = 
+  fun getFunName (Ast.FunDec (fb::_, _)) =
             (* Given an Ast.FunDec, extract the first clause *)
         let fun findFirstClause (Ast.MarkFb (fb, _)) = findFirstClause fb
               | findFirstClause (Ast.Fb (clause::_, _)) = clause
@@ -432,7 +441,7 @@ structure ParseFile :> PARSEFILE = struct
                (* Take a function declaration, and return true if any of its
                 * clauses call this function *)
                fun walkFb (Ast.MarkFb (fb, _)) = walkFb fb
-                 | walkFb (Ast.Fb (clauses, _)) = 
+                 | walkFb (Ast.Fb (clauses, _)) =
                      List.foldl (fn (c, acc) => walkClause c orelse acc) false
                        clauses
            in List.foldl (fn (fb, acc) => walkFb fb orelse acc) false fblist
@@ -559,10 +568,11 @@ structure ParseFile :> PARSEFILE = struct
                     | SOME _ => increment (expToExpType exp) 1 acc)) [] parseTree
 
   (* see signature *)
-  fun getNumberOfClauses (Ast.FunDec ([(Ast.MarkFb (Ast.Fb (cs,_),_))],_)) = 
+  fun getNumberOfClauses (Ast.FunDec ([(Ast.MarkFb (Ast.Fb (cs,_),_))],_)) =
       length cs
   | getNumberOfClauses _ = 0;
 
+  (* see signature *)
   fun getAppVars parseTree =
         (* get all applications *)
     let val apps = map (fn (Ast.FlatAppExp items) => items)
@@ -586,5 +596,56 @@ structure ParseFile :> PARSEFILE = struct
               end
     in map (fn x => getVarName x "") vars
     end
+
+  (* see signature *)
+  fun counterToList c = c
+
+  (* see signature *)
+  fun decTypeToString MARKDEC = "MarkDec"
+    | decTypeToString OPENDEC = "OpenDec"
+    | decTypeToString TYPEDEC = "TypeDec"
+    | decTypeToString OVLDDEC = "OvldDec"
+    | decTypeToString SEQDEC = "SeqDec"
+    | decTypeToString FIXDEC = "FixDec"
+    | decTypeToString LOCALDEC = "LocalDeC"
+    | decTypeToString FSIGDEC = "FsigDec"
+    | decTypeToString SIGDEC = "SigDec"
+    | decTypeToString FCTDEC = "FctDec"
+    | decTypeToString ABSDEC = "AbsDec"
+    | decTypeToString STRDEC = "StrDec"
+    | decTypeToString EXCEPTIONDEC = "ExceptionDec"
+    | decTypeToString ABSTYPEDEC = "AbstypeDec"
+    | decTypeToString DATAREPLDEC = "DatareplDec"
+    | decTypeToString DATATYPEDEC = "DatatypeDec"
+    | decTypeToString FUNDEC = "FunDec"
+    | decTypeToString VALDEC = "ValDec"
+    | decTypeToString VALRECDEC = "ValrecDec"
+
+  (* see signature *)
+  fun expTypeToString VAREXP = "VarExp"
+    | expTypeToString FNEXP = "FnExp"
+    | expTypeToString FLATAPPEXP = "FlatAppExp"
+    | expTypeToString APPEXP = "AppExp"
+    | expTypeToString CASEEXP = "CaseExp"
+    | expTypeToString LETEXP = "LetExp"
+    | expTypeToString SEQEXP = "SeqExp"
+    | expTypeToString INTEXP = "IntExp"
+    | expTypeToString WORDEXP = "WordExp"
+    | expTypeToString REALEXP = "RealExp"
+    | expTypeToString STRINGEXP = "StringExp"
+    | expTypeToString CHAREXP = "CharExp"
+    | expTypeToString RECORDEXP = "RecordExp"
+    | expTypeToString LISTEXP = "ListExp"
+    | expTypeToString TUPLEEXP = "TupleExp"
+    | expTypeToString SELECTOREXP = "SelectorExp"
+    | expTypeToString CONSTRAINTEXP = "ConstraintExp"
+    | expTypeToString HANDLEEXP = "HandleExp"
+    | expTypeToString RAISEEXP = "RaiseExp"
+    | expTypeToString IFEXP = "IfExp"
+    | expTypeToString ANDALSOEXP = "AndalsoExp"
+    | expTypeToString ORELSEEXP = "OrelseExp"
+    | expTypeToString WHILEEXP = "WhileExp"
+    | expTypeToString MARKEXP = "MarkExp"
+    | expTypeToString VECTOREXP = "VectorExp"
 
 end
