@@ -1,4 +1,4 @@
-use "parse.sml";
+use "parsefile.sml";
 val inputFile = "sml.txt";
 
 fun readList (inputFile : string) =
