@@ -652,9 +652,13 @@ structure ParseFile :> PARSEFILE = struct
     | expTypeToString VECTOREXP = "VectorExp"
 
   (* see signature *)
-  fun getTopLevelDec (Ast.MarkDec (d, _)) = getTopLevelDec d
-    | getTopLevelDec (Ast.SeqDec decs) =
-        map getTopLevelDec decs
+  local
+    fun removeMark (Ast.MarkDec (d,_)) = d
+      | removeMark d = d
+  in
+  fun getTopLevelDec (d as (Ast.MarkDec _)) = getTopLevelDec (removeMark d)
+    | getTopLevelDec (Ast.SeqDec decs) = map removeMark decs
     | getTopLevelDec d = [d]
+  end
 
 end
