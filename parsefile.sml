@@ -22,6 +22,9 @@ signature PARSEFILE = sig
                    | CONSTRAINTEXP | HANDLEEXP | RAISEEXP | IFEXP | ANDALSOEXP
                    | ORELSEEXP | WHILEEXP | MARKEXP | VECTOREXP
 
+  (* get line count of file *)
+  val getLineCount : string -> int
+
   (* get string equivalent of a dec type *)
   val decTypeToString : dectype -> string
 
@@ -40,6 +43,16 @@ signature PARSEFILE = sig
   (* increment takes an item of type ''a and a counter on ''a and increases the
    * count for the input object by the specified integer *)
   val increment : ''a -> int -> ''a counter -> ''a counter
+
+  (* Given a list of objects, increment a counter of those objects to give an
+   * updated counter *)
+  val countList : ''a list -> ''a counter -> ''a counter
+
+  (* Take two counters and merge their counts
+   * Algebraic laws:
+   * a merge b = b merge a
+   * a merge empty = a *)
+  val mergeCounters : ''a counter * ''a counter -> ''a counter
 
   (* countDec (curried) takes a list of declaration types (dectype) and a
    * parse tree and returns a list of declaration type / occurrence pairs. *)
@@ -106,6 +119,10 @@ signature PARSEFILE = sig
   (* Given a parsetree, find the top level declaration *)
   val getTopLevelDec : Ast.dec -> Ast.dec list
 
+  (* For a given parse tree, look at the declarations by level
+   * Specifically, we're looking for fun, val, and struct decs *)
+  val countDecLevel : Ast.dec -> (Ast.dec * int) counter
+
 end
 
 structure ParseFile :> PARSEFILE = struct
@@ -114,9 +131,23 @@ structure ParseFile :> PARSEFILE = struct
 
   (* see signature *)
   fun readFile filename =
-    let val src = Source.newSource (filename, TextIO.openIn filename, false,
+    let val instrm = TextIO.openIn filename
+        val src = Source.newSource (filename, instrm, false,
                                      ErrorMsg.defaultConsumer ())
-    in SmlFile.parse src
+    in SmlFile.parse src before TextIO.closeIn instrm
+    end
+
+  (* see signature *)
+  fun getLineCount f =
+    let fun readAll (inputFile : string) =
+          let val ins = TextIO.openIn inputFile
+              fun loop i =
+                case TextIO.inputLine i
+                  of SOME _ => 1 + loop i
+                   | NONE => 0
+          in loop ins before TextIO.closeIn ins
+          end
+    in readAll f
     end
 
   (* see signature *)
@@ -652,13 +683,20 @@ structure ParseFile :> PARSEFILE = struct
     | expTypeToString VECTOREXP = "VectorExp"
 
   (* see signature *)
-  local
-    fun removeMark (Ast.MarkDec (d,_)) = d
-      | removeMark d = d
-  in
-  fun getTopLevelDec (d as (Ast.MarkDec _)) = getTopLevelDec (removeMark d)
-    | getTopLevelDec (Ast.SeqDec decs) = map removeMark decs
+  fun getTopLevelDec (Ast.MarkDec (d, _)) = getTopLevelDec d
+    | getTopLevelDec (Ast.SeqDec decs) = List.concat (map getTopLevelDec decs)
     | getTopLevelDec d = [d]
-  end
+
+  (* see signature *)
+  fun countList xs c =
+    List.foldl (fn (x, a) => increment x 1 a) c xs
+
+  (* see signature *)
+  fun mergeCounters (a, b) =
+    List.foldl (fn ((x, i), acc) => increment x i acc) b a
+
+  (* see signature *)
+  (* TBD *)
+  fun countDecLevel parseTree = emptyCounter
 
 end
