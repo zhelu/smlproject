@@ -6,6 +6,12 @@ signature MANYFILES = sig
   val getFileList : string -> string list
 
   (* given a list of files and a list of declarations, compile a tally of
+   * the selected expression types for correctly parsed files *)
+  val getExpCount : string list ->
+                      ParseFile.exptype list ->
+                        ParseFile.exptype ParseFile.counter
+
+  (* given a list of files and a list of declarations, compile a tally of
    * the selected declaration types for correctly parsed files *)
   val getDecCount : string list ->
                       ParseFile.dectype list ->
@@ -17,6 +23,11 @@ signature MANYFILES = sig
 
   (* Count total lines in correctly parsed files *)
   val countLines : string list -> int
+
+  (* get counts of fun, val, str declarations and the level of nesting *)
+  val getDecLevelCounts : string list ->
+                            (ParseFile.dectype * int) ParseFile.counter
+
 end
 
 structure ManyFiles :> MANYFILES = struct
@@ -63,6 +74,17 @@ structure ManyFiles :> MANYFILES = struct
         end) ParseFile.emptyCounter fileList
 
   (* see signature *)
+  fun getExpCount fileList exps =
+    List.foldl
+      (fn (f, acc) =>
+        let val expCount = parseFile f >= (fn p => ParseFile.countExp exps p)
+        in (case expCount
+              of SOME ec => 
+                   ParseFile.mergeCounters (ec, acc)
+               | NONE => acc)
+        end) ParseFile.emptyCounter fileList
+
+  (* see signature *)
   fun countTopLevelDecs fileList =
     List.foldl
       (fn (f, acc) =>
@@ -83,4 +105,15 @@ structure ManyFiles :> MANYFILES = struct
         val counts = map ParseFile.getLineCount okFiles
     in List.foldr (op +) 0 counts
     end
+
+  (* see signature *)
+  fun getDecLevelCounts fileList =
+    List.foldl
+      (fn (f, acc) =>
+        let val decCount = parseFile f >= ParseFile.countDecLevel
+        in (case decCount
+              of SOME dc =>
+                   ParseFile.mergeCounters (dc, acc)
+               | NONE => acc)
+        end) ParseFile.emptyCounter fileList
 end

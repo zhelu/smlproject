@@ -21,7 +21,7 @@ structure JGraph :> JGRAPH = struct
                                 (Real.toString (Math.ln (Real.fromInt c))) ^
                                   "\n" ^ acc
                            end) "" coords
-        val header = "newgraph\nnewcurve pts\n"
+        val header = "newgraph\nxaxis label : log rank\nyaxis label : log count\nnewcurve pts\n"
     in header ^ ptsString
     end
 end
