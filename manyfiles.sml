@@ -71,7 +71,7 @@ structure ManyFiles :> MANYFILES = struct
               of SOME dc => 
                    ParseFile.mergeCounters (dc, acc)
                | NONE => acc)
-        end) ParseFile.emptyCounter fileList
+        end) (ParseFile.emptyCounter ParseFile.dectypeCompare) fileList
 
   (* see signature *)
   fun getExpCount fileList exps =
@@ -82,7 +82,7 @@ structure ManyFiles :> MANYFILES = struct
               of SOME ec => 
                    ParseFile.mergeCounters (ec, acc)
                | NONE => acc)
-        end) ParseFile.emptyCounter fileList
+        end) (ParseFile.emptyCounter ParseFile.exptypeCompare) fileList
 
   (* see signature *)
   fun countTopLevelDecs fileList =
@@ -91,13 +91,15 @@ structure ManyFiles :> MANYFILES = struct
         let val decCount = parseFile f >=
                            ParseFile.getTopLevelDec >= 
                            (fn dc => map ParseFile.decToDecType dc) >=
-                           (fn ds => ParseFile.countList ds
-                                       ParseFile.emptyCounter)
+                           (fn ds => List.foldl
+                                       (fn (d, a) => ParseFile.increment d 1 a)
+                                       (ParseFile.emptyCounter
+                                          ParseFile.dectypeCompare) ds)
         in (case decCount
               of SOME dc =>
                    ParseFile.mergeCounters (dc, acc)
                | NONE => acc)
-        end) ParseFile.emptyCounter fileList
+        end) (ParseFile.emptyCounter ParseFile.dectypeCompare) fileList
 
   (* see signature *)
   fun countLines fileList =
@@ -115,5 +117,5 @@ structure ManyFiles :> MANYFILES = struct
               of SOME dc =>
                    ParseFile.mergeCounters (dc, acc)
                | NONE => acc)
-        end) ParseFile.emptyCounter fileList
+        end) (ParseFile.emptyCounter ParseFile.decLevelCompare) fileList
 end

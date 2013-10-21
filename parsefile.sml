@@ -34,25 +34,22 @@ signature PARSEFILE = sig
   (* all declaration types except for MarkDec and SeqDec *)
   val allDec : dectype list
 
-  (* Maintains a count of items. See function getCountOf *)
-  type ''a counter = (''a * int) list
+  (* Maintains a count of items. Based on a comparison function.
+   * See function getCountOf *)
+  type 'a counter = ('a * 'a -> order) * ('a * int) list
 
-  (* An empty counter *)
-  val emptyCounter : ''a counter
+  (* Create an empty counter given a comparison function *)
+  val emptyCounter : ('a * 'a -> order) -> 'a counter
 
   (* increment takes an item of type ''a and a counter on ''a and increases the
    * count for the input object by the specified integer *)
-  val increment : ''a -> int -> ''a counter -> ''a counter
-
-  (* Given a list of objects, increment a counter of those objects to give an
-   * updated counter *)
-  val countList : ''a list -> ''a counter -> ''a counter
+  val increment : 'a -> int -> 'a counter -> 'a counter
 
   (* Take two counters and merge their counts
    * Algebraic laws:
    * a merge b = b merge a
    * a merge empty = a *)
-  val mergeCounters : ''a counter * ''a counter -> ''a counter
+  val mergeCounters : 'a counter * 'a counter -> 'a counter
 
   (* countDec (curried) takes a list of declaration types (dectype) and a
    * parse tree and returns a list of declaration type / occurrence pairs. *)
@@ -123,11 +120,18 @@ signature PARSEFILE = sig
    * Specifically, we're looking for fun, val, and struct decs *)
   val countDecLevel : Ast.dec -> (dectype * int) counter
 
+  (* comparator for dectypes *)
+  val dectypeCompare : dectype * dectype -> order
+
+  (* comparator for exptypes *)
+  val exptypeCompare : exptype * exptype -> order
+
+  (* comparator for dec level counts *)
+  val decLevelCompare : (dectype * int) * (dectype * int) -> order
+
 end
 
 structure ParseFile :> PARSEFILE = struct
-
-  val debug = false
 
   (* see signature *)
   fun readFile filename =
@@ -157,34 +161,20 @@ structure ParseFile :> PARSEFILE = struct
             let val acc' = f (dec, acc)
             in foldDecs f acc' m
             end
-        | Ast.OpenDec paths =>
-            (print (if debug then (Int.toString (List.length paths)
-                                    ^ " open statement(s)\n") else "");
-             f (dec, acc))
-        | Ast.TypeDec types =>
-            (print (if debug then (Int.toString (List.length types)
-                                    ^ " type dec(s)\n") else "");
-             f (dec, acc))
-        | Ast.OvldDec (symbol, ty, exps) =>
-            (print (if debug then ((Symbol.name symbol) ^ " overloaded\n")
-                   else "");
-             f (dec, acc))
+        | Ast.OpenDec paths => f (dec, acc)
+        | Ast.TypeDec types => f (dec, acc)
+        | Ast.OvldDec (symbol, ty, exps) => f (dec, acc)
         | Ast.SeqDec decs =>
             List.foldl (fn (dec, acc') => foldDecs f acc' dec) acc decs
-        | Ast.FixDec _ => (print (if debug then "fixity dec\n" else "");
-                           f (dec, acc))
+        | Ast.FixDec _ => f (dec, acc)
         | Ast.LocalDec (locals, body) =>
-            (print (if debug then "local dec\n" else "");
              let val acc' = f (dec, acc)
                  val newAcc = foldDecs f acc' locals
              in foldDecs f newAcc body
-             end)
-        | Ast.FsigDec _ => (print (if debug then "fsig dec\n" else "");
-                            f (dec, acc))
-        | Ast.SigDec _ => (print (if debug then "sig dec\n" else "");
-                           f (dec, acc))
+             end
+        | Ast.FsigDec _ => f (dec, acc)
+        | Ast.SigDec _ => f (dec, acc)
         | Ast.FctDec fctdecs =>
-           (print (if debug then "funsig dec\n" else "");
                 (* walkStrExp extracts declarations from a structure expression
                  * by applying foldDecs on any Ast.dec types it finds *)
             let fun walkStrExp f acc (Ast.BaseStr d) = foldDecs f acc d
@@ -210,11 +200,9 @@ structure ParseFile :> PARSEFILE = struct
                       walkFctExp f acc fctexp
                 val acc' = f (dec, acc)
             in List.foldl (fn (dec, acc) => walkFctDec f acc dec) acc' fctdecs
-            end)
-        | Ast.AbsDec _ => (print (if debug then "abstr struct dec\n" else "");
-                           f (dec, acc))
+            end
+        | Ast.AbsDec _ => f (dec, acc)
         | Ast.StrDec strdecs =>
-           (print (if debug then "structure dec\n" else "");
                 (* walkStrExp extracts declarations from a structure expression
                  * by applying foldDecs on any Ast.dec types it finds *)
             let fun walkStrExp f acc (Ast.BaseStr d) = foldDecs f acc d
@@ -231,105 +219,104 @@ structure ParseFile :> PARSEFILE = struct
                       walkStrDec f acc strb
                 val acc' = f (dec, acc)
             in List.foldl (fn (dec, acc) => walkStrDec f acc dec) acc' strdecs
-            end)
-        | Ast.ExceptionDec _ => (print (if debug then "exn dec\n" else "");
-                                 f (dec, acc))
-        | Ast.AbstypeDec {body = d, ...} =>
-            (print (if debug then "abst type dec\n" else "");
-             foldDecs f (f (dec, acc)) d)
-        | Ast.DataReplDec _ =>
-            (print (if debug then "data replication dec\n" else "");
-             f (dec, acc))
-        | Ast.DatatypeDec _ =>
-            (print (if debug then "datatype dec\n" else "");
-             f (dec, acc))
+            end
+        | Ast.ExceptionDec _ => f (dec, acc)
+        | Ast.AbstypeDec {body = d, ...} => foldDecs f (f (dec, acc)) d
+        | Ast.DataReplDec _ => f (dec, acc)
+        | Ast.DatatypeDec _ => f (dec, acc)
         | Ast.FunDec (fblist,_) =>
-            (print (if debug then "fun dec\n" else "");
-                  (* walkExp gets Ast.decs from an expression *)
-              let fun walkExp f acc (Ast.LetExp {dec = d, ...}) =
-                        foldDecs f acc d
-                    | walkExp f acc (Ast.MarkExp (exp, _)) =
-                        walkExp f acc exp
-                    | walkExp f acc (Ast.SeqExp exps) =
-                        List.foldl (fn (exp, acc) => walkExp f acc exp)
-                          acc exps
-                    | walkExp f acc (Ast.FlatAppExp items) =
-                        List.foldl
-                          (fn ({item = exp, ...}, acc) => walkExp f acc exp)
-                          acc items
-                    | walkExp f acc _ = acc
-                  (* walkClause gets Ast.decs from a clause by
-                   * checking its expression for let bindings *)
-                  fun walkClause f acc (Ast.Clause {exp = exp, ...}) =
-                        walkExp f acc exp
-                  (* walkFb gets Ast.dec types from a function definition
-                     by processing its clauses for letting bindings *)
-                  fun walkFb f acc (Ast.MarkFb (fb, _)) = walkFb f acc fb
-                    | walkFb f acc (Ast.Fb (clauses, _)) =
-                        List.foldl (fn (clause, acc) => walkClause f acc clause)
-                          acc clauses
-                  val acc' = f (dec, acc)
-              in List.foldl (fn (fb, acc) => walkFb f acc fb) acc' fblist
-              end)
+                (* walkExp gets Ast.decs from an expression *)
+            let fun walkExp f acc (Ast.LetExp {dec = d, ...}) =
+                      foldDecs f acc d
+                  | walkExp f acc (Ast.MarkExp (exp, _)) =
+                      walkExp f acc exp
+                  | walkExp f acc (Ast.SeqExp exps) =
+                      List.foldl (fn (exp, acc) => walkExp f acc exp)
+                        acc exps
+                  | walkExp f acc (Ast.FlatAppExp items) =
+                      List.foldl
+                        (fn ({item = exp, ...}, acc) => walkExp f acc exp)
+                        acc items
+                  | walkExp f acc _ = acc
+                (* walkClause gets Ast.decs from a clause by
+                 * checking its expression for let bindings *)
+                fun walkClause f acc (Ast.Clause {exp = exp, ...}) =
+                      walkExp f acc exp
+                (* walkFb gets Ast.dec types from a function definition
+                   by processing its clauses for letting bindings *)
+                fun walkFb f acc (Ast.MarkFb (fb, _)) = walkFb f acc fb
+                  | walkFb f acc (Ast.Fb (clauses, _)) =
+                      List.foldl (fn (clause, acc) => walkClause f acc clause)
+                        acc clauses
+                val acc' = f (dec, acc)
+            in List.foldl (fn (fb, acc) => walkFb f acc fb) acc' fblist
+            end
         | Ast.ValDec (vblist, _) =>
-            (print (if debug then "val dec\n" else "");
-                  (* walkExp gets Ast.decs from an expression *)
-              let fun walkExp f acc (Ast.LetExp {dec = d, ...}) =
-                        foldDecs f acc d
-                    | walkExp f acc (Ast.MarkExp (exp, _)) =
-                        walkExp f acc exp
-                    | walkExp f acc (Ast.SeqExp exps) =
-                        List.foldl (fn (exp, acc) => walkExp f acc exp)
-                          acc exps
-                    | walkExp f acc (Ast.FlatAppExp items) =
-                        List.foldl
-                          (fn ({item = exp, ...}, acc) => walkExp f acc exp)
-                          acc items
-                    | walkExp f acc _ = acc
-                  (* walkVb gets Ast.decs from a val declaration by checking
-                   * its expression for lets *)
-                  fun walkVb f acc (Ast.MarkVb (vb, _)) = walkVb f acc vb
-                    | walkVb f acc (Ast.Vb {exp = e, ...}) = walkExp f acc e
-                  val acc' = f (dec, acc)
-              in List.foldl (fn (vb, acc) => walkVb f acc vb) acc' vblist
-              end)
+                (* walkExp gets Ast.decs from an expression *)
+            let fun walkExp f acc (Ast.LetExp {dec = d, ...}) =
+                      foldDecs f acc d
+                  | walkExp f acc (Ast.MarkExp (exp, _)) =
+                      walkExp f acc exp
+                  | walkExp f acc (Ast.SeqExp exps) =
+                      List.foldl (fn (exp, acc) => walkExp f acc exp)
+                        acc exps
+                  | walkExp f acc (Ast.FlatAppExp items) =
+                      List.foldl
+                        (fn ({item = exp, ...}, acc) => walkExp f acc exp)
+                        acc items
+                  | walkExp f acc _ = acc
+                (* walkVb gets Ast.decs from a val declaration by checking
+                 * its expression for lets *)
+                fun walkVb f acc (Ast.MarkVb (vb, _)) = walkVb f acc vb
+                  | walkVb f acc (Ast.Vb {exp = e, ...}) = walkExp f acc e
+                val acc' = f (dec, acc)
+            in List.foldl (fn (vb, acc) => walkVb f acc vb) acc' vblist
+            end
         | Ast.ValrecDec (rvblist, _) =>
-            (print (if debug then "valrec dec\n" else "");
-                  (* walkExp gets Ast.decs from an expression *)
-              let fun walkExp f acc (Ast.LetExp {dec = d, ...}) =
-                        foldDecs f acc d
-                    | walkExp f acc (Ast.MarkExp (exp, _)) =
-                        walkExp f acc exp
-                    | walkExp f acc (Ast.SeqExp exps) =
-                        List.foldl (fn (exp, acc) => walkExp f acc exp)
-                          acc exps
-                    | walkExp f acc (Ast.FlatAppExp items) =
-                        List.foldl
-                          (fn ({item = exp, ...}, acc) => walkExp f acc exp)
-                          acc items
-                    | walkExp f acc _ = acc
-                  (* walkVb gets Ast.decs from a valrec declaration by checking
-                   * its expression for lets *)
-                  fun walkRvb f acc (Ast.MarkRvb (rvb, _)) = walkRvb f acc rvb
-                    | walkRvb f acc (Ast.Rvb {exp = e, ...}) = walkExp f acc e
-                  val acc' = f (dec, acc)
-              in List.foldl (fn (rvb, acc) => walkRvb f acc rvb) acc' rvblist
-              end))
+                (* walkExp gets Ast.decs from an expression *)
+            let fun walkExp f acc (Ast.LetExp {dec = d, ...}) =
+                      foldDecs f acc d
+                  | walkExp f acc (Ast.MarkExp (exp, _)) =
+                      walkExp f acc exp
+                  | walkExp f acc (Ast.SeqExp exps) =
+                      List.foldl (fn (exp, acc) => walkExp f acc exp)
+                        acc exps
+                  | walkExp f acc (Ast.FlatAppExp items) =
+                      List.foldl
+                        (fn ({item = exp, ...}, acc) => walkExp f acc exp)
+                        acc items
+                  | walkExp f acc _ = acc
+                (* walkVb gets Ast.decs from a valrec declaration by checking
+                 * its expression for lets *)
+                fun walkRvb f acc (Ast.MarkRvb (rvb, _)) = walkRvb f acc rvb
+                  | walkRvb f acc (Ast.Rvb {exp = e, ...}) = walkExp f acc e
+                val acc' = f (dec, acc)
+            in List.foldl (fn (rvb, acc) => walkRvb f acc rvb) acc' rvblist
+            end)
 
-  type ''a counter = (''a * int) list
-
-  (* see signature *)
-  fun getCountOf x [] = 0
-    | getCountOf x ((y, c) :: rest) = if x = y then c else getCountOf x rest
+  type 'a counter = ('a * 'a -> order) * ('a * int) list
 
   (* see signature *)
-  fun increment x i [] = [(x, i)]
-    | increment x i ((y, count) :: rest) =
-        if (x = y) then (y, count + i) :: rest
-        else (y, count) :: increment x i rest
+  fun getCountOf x (_, []) = 0
+    | getCountOf x (f, (y, c) :: rest) =
+        (case f (x,y)
+           of LESS => 0
+            | EQUAL => c
+            | GREATER => getCountOf x (f, rest))
 
   (* see signature *)
-  val emptyCounter = []
+  fun increment x i (f, []) = (f, [(x, i)])
+    | increment x i (f, (y, count) :: rest) =
+        (case f (x,y)
+           of LESS => (f, (x,i) :: (y,count) :: rest)
+            | EQUAL => (f, (y, count + i) :: rest)
+            | GREATER =>
+                let val (_, r) = increment x i (f, rest)
+                in (f, (y, count) :: r)
+                end)
+
+  (* see signature *)
+  fun emptyCounter f = (f, [])
 
   datatype dectype = MARKDEC | OPENDEC | TYPEDEC | OVLDDEC | SEQDEC | FIXDEC
                    | LOCALDEC | FSIGDEC | SIGDEC | FCTDEC | ABSDEC | STRDEC
@@ -389,11 +376,75 @@ structure ParseFile :> PARSEFILE = struct
     | decToDecType (Ast.MarkDec _) = MARKDEC
 
   (* see signature *)
+  fun decTypeToString MARKDEC = "MarkDec"
+    | decTypeToString OPENDEC = "OpenDec"
+    | decTypeToString TYPEDEC = "TypeDec"
+    | decTypeToString OVLDDEC = "OvldDec"
+    | decTypeToString SEQDEC = "SeqDec"
+    | decTypeToString FIXDEC = "FixDec"
+    | decTypeToString LOCALDEC = "LocalDeC"
+    | decTypeToString FSIGDEC = "FsigDec"
+    | decTypeToString SIGDEC = "SigDec"
+    | decTypeToString FCTDEC = "FctDec"
+    | decTypeToString ABSDEC = "AbsDec"
+    | decTypeToString STRDEC = "StrDec"
+    | decTypeToString EXCEPTIONDEC = "ExceptionDec"
+    | decTypeToString ABSTYPEDEC = "AbstypeDec"
+    | decTypeToString DATAREPLDEC = "DatareplDec"
+    | decTypeToString DATATYPEDEC = "DatatypeDec"
+    | decTypeToString FUNDEC = "FunDec"
+    | decTypeToString VALDEC = "ValDec"
+    | decTypeToString VALRECDEC = "ValrecDec"
+
+  (* see signature *)
+  fun expTypeToString VAREXP = "VarExp"
+    | expTypeToString FNEXP = "FnExp"
+    | expTypeToString FLATAPPEXP = "FlatAppExp"
+    | expTypeToString APPEXP = "AppExp"
+    | expTypeToString CASEEXP = "CaseExp"
+    | expTypeToString LETEXP = "LetExp"
+    | expTypeToString SEQEXP = "SeqExp"
+    | expTypeToString INTEXP = "IntExp"
+    | expTypeToString WORDEXP = "WordExp"
+    | expTypeToString REALEXP = "RealExp"
+    | expTypeToString STRINGEXP = "StringExp"
+    | expTypeToString CHAREXP = "CharExp"
+    | expTypeToString RECORDEXP = "RecordExp"
+    | expTypeToString LISTEXP = "ListExp"
+    | expTypeToString TUPLEEXP = "TupleExp"
+    | expTypeToString SELECTOREXP = "SelectorExp"
+    | expTypeToString CONSTRAINTEXP = "ConstraintExp"
+    | expTypeToString HANDLEEXP = "HandleExp"
+    | expTypeToString RAISEEXP = "RaiseExp"
+    | expTypeToString IFEXP = "IfExp"
+    | expTypeToString ANDALSOEXP = "AndalsoExp"
+    | expTypeToString ORELSEEXP = "OrelseExp"
+    | expTypeToString WHILEEXP = "WhileExp"
+    | expTypeToString MARKEXP = "MarkExp"
+    | expTypeToString VECTOREXP = "VectorExp"
+
+  (* see signature *)
+  fun dectypeCompare (a,b) = 
+        String.compare (decTypeToString a, decTypeToString b)
+
+  (* see signature *)
+  fun exptypeCompare (a,b) =
+        String.compare (expTypeToString a, expTypeToString b)
+
+  (* see signature *)
+  fun decLevelCompare ((a,x),(b,y)) =
+    (case (dectypeCompare (a,b), Int.compare (x,y))
+       of (LESS, _) => LESS
+        | (GREATER, _) => GREATER
+        | (_, c) => c)
+
+  (* see signature *)
   fun countDec countedDecs parseTree =
     foldDecs (fn (dec, acc) =>
                (case (List.find (fn x => x = decToDecType dec) countedDecs)
                   of NONE => acc
-                   | SOME _ => increment (decToDecType dec) 1 acc)) [] parseTree
+                   | SOME _ => increment (decToDecType dec) 1 acc))
+                                 (emptyCounter dectypeCompare) parseTree
 
   (* see signature *)
   fun findDec targetDecs parseTree =
@@ -600,7 +651,7 @@ structure ParseFile :> PARSEFILE = struct
                 (case (List.find (fn x => x = expToExpType exp) countedExps)
                    of NONE => acc
                     | SOME _ => increment (expToExpType exp) 1 acc))
-              [] parseTree
+              (emptyCounter exptypeCompare) parseTree
 
   (* see signature *)
   fun getNumberOfClauses (Ast.FunDec ([(Ast.MarkFb (Ast.Fb (cs,_),_))],_)) =
@@ -633,56 +684,6 @@ structure ParseFile :> PARSEFILE = struct
     in map (fn x => getVarName x "") vars
     end
 
-  (* see signature *)
-  fun counterToList c = c
-
-  (* see signature *)
-  fun decTypeToString MARKDEC = "MarkDec"
-    | decTypeToString OPENDEC = "OpenDec"
-    | decTypeToString TYPEDEC = "TypeDec"
-    | decTypeToString OVLDDEC = "OvldDec"
-    | decTypeToString SEQDEC = "SeqDec"
-    | decTypeToString FIXDEC = "FixDec"
-    | decTypeToString LOCALDEC = "LocalDeC"
-    | decTypeToString FSIGDEC = "FsigDec"
-    | decTypeToString SIGDEC = "SigDec"
-    | decTypeToString FCTDEC = "FctDec"
-    | decTypeToString ABSDEC = "AbsDec"
-    | decTypeToString STRDEC = "StrDec"
-    | decTypeToString EXCEPTIONDEC = "ExceptionDec"
-    | decTypeToString ABSTYPEDEC = "AbstypeDec"
-    | decTypeToString DATAREPLDEC = "DatareplDec"
-    | decTypeToString DATATYPEDEC = "DatatypeDec"
-    | decTypeToString FUNDEC = "FunDec"
-    | decTypeToString VALDEC = "ValDec"
-    | decTypeToString VALRECDEC = "ValrecDec"
-
-  (* see signature *)
-  fun expTypeToString VAREXP = "VarExp"
-    | expTypeToString FNEXP = "FnExp"
-    | expTypeToString FLATAPPEXP = "FlatAppExp"
-    | expTypeToString APPEXP = "AppExp"
-    | expTypeToString CASEEXP = "CaseExp"
-    | expTypeToString LETEXP = "LetExp"
-    | expTypeToString SEQEXP = "SeqExp"
-    | expTypeToString INTEXP = "IntExp"
-    | expTypeToString WORDEXP = "WordExp"
-    | expTypeToString REALEXP = "RealExp"
-    | expTypeToString STRINGEXP = "StringExp"
-    | expTypeToString CHAREXP = "CharExp"
-    | expTypeToString RECORDEXP = "RecordExp"
-    | expTypeToString LISTEXP = "ListExp"
-    | expTypeToString TUPLEEXP = "TupleExp"
-    | expTypeToString SELECTOREXP = "SelectorExp"
-    | expTypeToString CONSTRAINTEXP = "ConstraintExp"
-    | expTypeToString HANDLEEXP = "HandleExp"
-    | expTypeToString RAISEEXP = "RaiseExp"
-    | expTypeToString IFEXP = "IfExp"
-    | expTypeToString ANDALSOEXP = "AndalsoExp"
-    | expTypeToString ORELSEEXP = "OrelseExp"
-    | expTypeToString WHILEEXP = "WhileExp"
-    | expTypeToString MARKEXP = "MarkExp"
-    | expTypeToString VECTOREXP = "VectorExp"
 
   (* see signature *)
   fun getTopLevelDec (Ast.MarkDec (d, _)) = getTopLevelDec d
@@ -690,11 +691,7 @@ structure ParseFile :> PARSEFILE = struct
     | getTopLevelDec d = [d]
 
   (* see signature *)
-  fun countList xs c =
-    List.foldl (fn (x, a) => increment x 1 a) c xs
-
-  (* see signature *)
-  fun mergeCounters (a, b) =
+  fun mergeCounters ((_, a), b) =
     List.foldl (fn ((x, i), acc) => increment x i acc) b a
 
   (* see signature
@@ -847,7 +844,9 @@ structure ParseFile :> PARSEFILE = struct
                         acc' rvblist
                    end
               | _ => increment (decToDecType dec, level) 1 acc)
-      in levelTraverseDecs 0 emptyCounter parseTree
+      in levelTraverseDecs 0 (emptyCounter decLevelCompare) parseTree
       end
 
+  (* see signature *)
+  fun counterToList (f, cs) = cs
 end
