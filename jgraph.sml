@@ -3,13 +3,13 @@ use "parsefile.sml";
 signature JGRAPH = sig
 
   (* take a counter and produce a string for a Zipf plot in jgraph format *)
-  val counterToZipf : 'a ParseFile.counter -> string
+  val counterToZipf : ''a ParseFile.counter -> string -> unit
 end
 
 structure JGraph :> JGRAPH = struct
 
   (* see signature *)
-  fun counterToZipf (f, decs) =
+  fun counterToZipf (f, decs) file =
     let val counts = map (fn (_, x) => x) decs
         val sortedCounts = ListMergeSort.sort (op <) counts
         val coords = List.foldl (fn (x, acc) => ((length acc) + 1, x) :: acc)
@@ -21,7 +21,10 @@ structure JGraph :> JGRAPH = struct
                                 (Real.toString (Math.ln (Real.fromInt c))) ^
                                   "\n" ^ acc
                            end) "" coords
-        val header = "newgraph\nxaxis label : log rank\nyaxis label : log count\nnewcurve pts\n"
-    in header ^ ptsString
+        val header = "newgraph\nxaxis label : log rank\n" ^
+                       "yaxis label : log count\nnewcurve pts\n"
+        val outstrm = TextIO.openOut file
+    in TextIO.output (outstrm, header ^ ptsString)
+         before TextIO.closeOut outstrm
     end
 end

@@ -129,6 +129,13 @@ signature PARSEFILE = sig
   (* comparator for dec level counts *)
   val decLevelCompare : (dectype * int) * (dectype * int) -> order
 
+  (* comparator for level paths *)
+  val levelPathCompare : dectype list * dectype list -> order
+
+  (* create a counter of level paths showing which declarations are nested
+   * inside which other declarations *)
+  val countLevelPaths : Ast.dec -> (dectype list) counter
+
 end
 
 structure ParseFile :> PARSEFILE = struct
@@ -157,7 +164,7 @@ structure ParseFile :> PARSEFILE = struct
   (* see signature *)
   fun foldDecs f acc dec =
     (case dec
-       of Ast.MarkDec (m, r) =>
+       of Ast.MarkDec (m, _) =>
             let val acc' = f (dec, acc)
             in foldDecs f acc' m
             end
@@ -694,159 +701,184 @@ structure ParseFile :> PARSEFILE = struct
   fun mergeCounters ((_, a), b) =
     List.foldl (fn ((x, i), acc) => increment x i acc) b a
 
-  (* see signature
-   * FUTURE WORK: This function looks a lot like foldTree. Maybe write one in
-   *              terms of the other *)
+
+  (* levelTraverseDecs takes functions f & g, a level accumulator, a
+   * accumulating counter, and a parse tree. For each declaration
+   * in the parse tree, it uses f to compute the item to increment in
+   * the counter, and on recursive calls, g to update the level
+   * accumulator.
+   * f computes the item from a (dec, level accumulator pair) 
+   * g computes the new level from a (dec, level accumulator pair) *)
+  fun levelTraverseDecs f g level acc dec =
+    (case dec
+      of Ast.MarkDec (m, _) =>
+           levelTraverseDecs f g level acc m
+       | Ast.SeqDec decs =>
+           List.foldl (fn (d, acc') => levelTraverseDecs f g level acc' d)
+             acc decs
+       | Ast.LocalDec (locals, body) =>
+           let val acc' = increment (f (dec, level)) 1 acc
+               val newAcc = levelTraverseDecs f g (g (dec, level)) acc' locals
+           in levelTraverseDecs f g (g (dec, level)) newAcc body
+           end
+       | Ast.FctDec fctdecs =>
+               (* walkStrExp extracts declarations from a structure
+                * expression by applying levelTraverseDecs on any Ast.dec
+                * types it finds *)
+           let fun walkStrExp l acc (Ast.BaseStr d) =
+                     levelTraverseDecs f g l acc d
+                 | walkStrExp l acc (Ast.MarkStr (strexp, _)) =
+                     walkStrExp l acc strexp
+                 | walkStrExp l acc (Ast.LetStr (letdec, strexp)) =
+                     walkStrExp l
+                       (levelTraverseDecs f g l acc letdec) strexp
+                 | walkStrExp l acc _ = acc
+               (* walkFctExp pulls Ast.dec types out of a functor
+                * expression by processing sub structure expression *)
+               fun walkFctExp l acc (Ast.MarkFct (fctexp, _)) =
+                     walkFctExp l acc fctexp
+                 | walkFctExp l acc (Ast.BaseFct {body = strexp,...}) =
+                     walkStrExp l acc strexp
+                 | walkFctExp l acc (Ast.LetFct (letdec, fctexp)) =
+                     walkFctExp l
+                       (levelTraverseDecs f g l acc letdec) fctexp
+                 | walkFctExp l acc _ = acc
+               (* walkFctDec pulls Ast.dec types out of a functor
+                * declaration by processing the sub functor expression *)
+               fun walkFctDec l acc (Ast.MarkFctb (fctb, _)) =
+                     walkFctDec l acc fctb
+                 | walkFctDec l acc (Ast.Fctb {def = fctexp, ...}) =
+                     walkFctExp l acc fctexp
+               val acc' = increment (f (dec, level)) 1 acc
+           in List.foldl (fn (d, acc) => walkFctDec (g (dec, level)) acc d)
+                acc' fctdecs
+           end
+       | Ast.StrDec strdecs =>
+               (* walkStrExp extracts declarations from a structure
+                * expression by applying levelTraverseDecs on any Ast.dec
+                * types it finds *)
+           let fun walkStrExp l acc (Ast.BaseStr d) =
+                     levelTraverseDecs f g l acc d
+                 | walkStrExp l acc (Ast.MarkStr (strexp, _)) =
+                     walkStrExp l acc strexp
+                 | walkStrExp l acc (Ast.LetStr (letdec, strexp)) =
+                     walkStrExp l (levelTraverseDecs f g l acc letdec) strexp
+                 | walkStrExp l acc _ = acc
+               (* walkStrDec extracts Ast.dec types from a structure
+                * declaration by processing the sub structure
+                * expression *)
+               fun walkStrDec l acc (Ast.Strb {def = strexp, ...}) =
+                     walkStrExp l acc strexp
+                 | walkStrDec l acc (Ast.MarkStrb (strb, _)) =
+                     walkStrDec l acc strb
+               val acc' = increment (f (dec, level)) 1 acc
+           in List.foldl (fn (d, acc) => walkStrDec (g (dec, level)) acc d)
+                acc' strdecs
+           end
+       | Ast.AbstypeDec {body = d, ...} =>
+           let val acc' = increment (f (dec, level)) 1 acc
+           in levelTraverseDecs f g (g (dec, level)) acc' d
+           end
+       | Ast.FunDec (fblist,_) =>
+               (* walkExp gets Ast.decs from an expression *)
+           let fun walkExp l acc (Ast.LetExp {dec = d, ...}) =
+                     levelTraverseDecs f g l acc d
+                 | walkExp l acc (Ast.MarkExp (exp, _)) =
+                     walkExp l acc exp
+                 | walkExp l acc (Ast.SeqExp exps) =
+                     List.foldl (fn (exp, acc) => walkExp l acc exp)
+                       acc exps
+                 | walkExp l acc (Ast.FlatAppExp items) =
+                     List.foldl
+                       (fn ({item = exp, ...}, acc) => walkExp l acc exp)
+                       acc items
+                 | walkExp l acc _ = acc
+               (* walkClause gets Ast.decs from a clause by
+                * checking its expression for let bindings *)
+               fun walkClause l acc (Ast.Clause {exp = exp, ...}) =
+                     walkExp l acc exp
+               (* walkFb gets Ast.dec types from a function definition
+                * by processing its clauses for letting bindings *)
+               fun walkFb l acc (Ast.MarkFb (fb, _)) = walkFb l acc fb
+                 | walkFb l acc (Ast.Fb (clauses, _)) =
+                     List.foldl
+                       (fn (clause, acc) => walkClause l acc clause)
+                       acc clauses
+               val acc' = increment (f (dec, level)) 1 acc
+           in List.foldl (fn (fb, acc) => walkFb (g (dec, level)) acc fb) acc'
+                fblist
+           end
+       | Ast.ValDec (vblist, _) =>
+               (* walkExp gets Ast.decs from an expression *)
+           let fun walkExp l acc (Ast.LetExp {dec = d, ...}) =
+                     levelTraverseDecs f g l acc d
+                 | walkExp l acc (Ast.MarkExp (exp, _)) =
+                     walkExp l acc exp
+                 | walkExp l acc (Ast.SeqExp exps) =
+                     List.foldl (fn (exp, acc) => walkExp l acc exp)
+                       acc exps
+                 | walkExp l acc (Ast.FlatAppExp items) =
+                     List.foldl
+                       (fn ({item = exp, ...}, acc) => walkExp l acc exp)
+                       acc items
+                 | walkExp l acc _ = acc
+               (* walkVb gets Ast.decs from a val declaration by checking
+                * its expression for lets *)
+               fun walkVb l acc (Ast.MarkVb (vb, _)) = walkVb l acc vb
+                 | walkVb l acc (Ast.Vb {exp = e, ...}) = walkExp l acc e
+               val acc' = increment (f (dec, level)) 1 acc
+           in List.foldl (fn (vb, acc) => walkVb (g (dec, level)) acc vb) acc'
+                vblist
+           end
+       | Ast.ValrecDec (rvblist, _) =>
+           let fun walkExp l acc (Ast.LetExp {dec = d, ...}) =
+                      levelTraverseDecs f g l acc d
+                  | walkExp l acc (Ast.MarkExp (exp, _)) =
+                      walkExp l acc exp
+                  | walkExp l acc (Ast.SeqExp exps) =
+                      List.foldl (fn (exp, acc) => walkExp l acc exp)
+                        acc exps
+                  | walkExp l acc (Ast.FlatAppExp items) =
+                      List.foldl
+                        (fn ({item = exp, ...}, acc) =>
+                          walkExp l acc exp)
+                        acc items
+                  | walkExp l acc _ = acc
+                (* walkVb gets Ast.decs from a valrec declaration by
+                 * checking its expression for lets *)
+                fun walkRvb l acc (Ast.MarkRvb (rvb, _)) =
+                      walkRvb l acc rvb
+                  | walkRvb l acc (Ast.Rvb {exp = e, ...}) =
+                      walkExp l acc e
+                val acc' = increment (f (dec, level)) 1 acc
+            in List.foldl (fn (rvb, acc) => walkRvb (g (dec, level)) acc rvb)
+                 acc' rvblist
+            end
+       | _ => increment (f (dec, level)) 1 acc)
+
+  (* type check *)
+  val _ =
+    op levelTraverseDecs : (Ast.dec * 'a -> 'b) -> (Ast.dec * 'a -> 'a) ->
+                             'a -> 'b counter -> Ast.dec -> 'b counter
+
+  (* see signature *)
   fun countDecLevel parseTree =
-    let fun levelTraverseDecs level acc dec =
-          (case dec
-             of Ast.MarkDec (m, r) =>
-                  levelTraverseDecs level acc m
-              | Ast.SeqDec decs =>
-                  List.foldl (fn (d, acc') => levelTraverseDecs level acc' d)
-                    acc decs
-              | Ast.LocalDec (locals, body) =>
-                  let val acc' = increment (decToDecType dec, level) 1 acc
-                      val newAcc = levelTraverseDecs (level + 1) acc' locals
-                  in levelTraverseDecs (level + 1) newAcc body
-                  end
-              | Ast.FctDec fctdecs =>
-                      (* walkStrExp extracts declarations from a structure
-                       * expression by applying levelTraverseDecs on any Ast.dec
-                       * types it finds *)
-                  let fun walkStrExp l acc (Ast.BaseStr d) =
-                            levelTraverseDecs l acc d
-                        | walkStrExp l acc (Ast.MarkStr (strexp, _)) =
-                            walkStrExp l acc strexp
-                        | walkStrExp l acc (Ast.LetStr (letdec, strexp)) =
-                            walkStrExp l
-                              (levelTraverseDecs l acc letdec) strexp
-                        | walkStrExp l acc _ = acc
-                      (* walkFctExp pulls Ast.dec types out of a functor
-                       * expression by processing sub structure expression *)
-                      fun walkFctExp l acc (Ast.MarkFct (fctexp, _)) =
-                            walkFctExp l acc fctexp
-                        | walkFctExp l acc (Ast.BaseFct {body = strexp,...}) =
-                            walkStrExp l acc strexp
-                        | walkFctExp l acc (Ast.LetFct (letdec, fctexp)) =
-                            walkFctExp l
-                              (levelTraverseDecs l acc letdec) fctexp
-                        | walkFctExp l acc _ = acc
-                      (* walkFctDec pulls Ast.dec types out of a functor
-                       * declaration by processing the sub functor expression *)
-                      fun walkFctDec l acc (Ast.MarkFctb (fctb, _)) =
-                            walkFctDec l acc fctb
-                        | walkFctDec l acc (Ast.Fctb {def = fctexp, ...}) =
-                            walkFctExp l acc fctexp
-                      val acc' = increment (decToDecType dec, level) 1 acc
-                  in List.foldl (fn (d, acc) => walkFctDec (level + 1) acc d)
-                       acc' fctdecs
-                  end
-              | Ast.StrDec strdecs =>
-                      (* walkStrExp extracts declarations from a structure
-                       * expression by applying levelTraverseDecs on any Ast.dec
-                       * types it finds *)
-                  let fun walkStrExp l acc (Ast.BaseStr d) =
-                            levelTraverseDecs l acc d
-                        | walkStrExp l acc (Ast.MarkStr (strexp, _)) =
-                            walkStrExp l acc strexp
-                        | walkStrExp l acc (Ast.LetStr (letdec, strexp)) =
-                            walkStrExp l (levelTraverseDecs l acc letdec) strexp
-                        | walkStrExp l acc _ = acc
-                      (* walkStrDec extracts Ast.dec types from a structure
-                       * declaration by processing the sub structure
-                       * expression *)
-                      fun walkStrDec l acc (Ast.Strb {def = strexp, ...}) =
-                            walkStrExp l acc strexp
-                        | walkStrDec l acc (Ast.MarkStrb (strb, _)) =
-                            walkStrDec l acc strb
-                      val acc' = increment (decToDecType dec, level) 1 acc
-                  in List.foldl (fn (d, acc) => walkStrDec (level + 1) acc d)
-                       acc' strdecs
-                  end
-              | Ast.AbstypeDec {body = d, ...} =>
-                  let val acc' = increment (decToDecType dec, level) 1 acc
-                  in levelTraverseDecs (level + 1) acc' d
-                  end
-              | Ast.FunDec (fblist,_) =>
-                      (* walkExp gets Ast.decs from an expression *)
-                  let fun walkExp l acc (Ast.LetExp {dec = d, ...}) =
-                            levelTraverseDecs l acc d
-                        | walkExp l acc (Ast.MarkExp (exp, _)) =
-                            walkExp l acc exp
-                        | walkExp l acc (Ast.SeqExp exps) =
-                            List.foldl (fn (exp, acc) => walkExp l acc exp)
-                              acc exps
-                        | walkExp l acc (Ast.FlatAppExp items) =
-                            List.foldl
-                              (fn ({item = exp, ...}, acc) => walkExp l acc exp)
-                              acc items
-                        | walkExp l acc _ = acc
-                      (* walkClause gets Ast.decs from a clause by
-                       * checking its expression for let bindings *)
-                      fun walkClause l acc (Ast.Clause {exp = exp, ...}) =
-                            walkExp l acc exp
-                      (* walkFb gets Ast.dec types from a function definition
-                       * by processing its clauses for letting bindings *)
-                      fun walkFb l acc (Ast.MarkFb (fb, _)) = walkFb l acc fb
-                        | walkFb l acc (Ast.Fb (clauses, _)) =
-                            List.foldl
-                              (fn (clause, acc) => walkClause l acc clause)
-                              acc clauses
-                      val acc' = increment (decToDecType dec, level) 1 acc
-                  in List.foldl (fn (fb, acc) => walkFb (level + 1) acc fb) acc'
-                       fblist
-                  end
-              | Ast.ValDec (vblist, _) =>
-                      (* walkExp gets Ast.decs from an expression *)
-                  let fun walkExp l acc (Ast.LetExp {dec = d, ...}) =
-                            levelTraverseDecs l acc d
-                        | walkExp l acc (Ast.MarkExp (exp, _)) =
-                            walkExp l acc exp
-                        | walkExp l acc (Ast.SeqExp exps) =
-                            List.foldl (fn (exp, acc) => walkExp l acc exp)
-                              acc exps
-                        | walkExp l acc (Ast.FlatAppExp items) =
-                            List.foldl
-                              (fn ({item = exp, ...}, acc) => walkExp l acc exp)
-                              acc items
-                        | walkExp l acc _ = acc
-                      (* walkVb gets Ast.decs from a val declaration by checking
-                       * its expression for lets *)
-                      fun walkVb l acc (Ast.MarkVb (vb, _)) = walkVb l acc vb
-                        | walkVb l acc (Ast.Vb {exp = e, ...}) = walkExp l acc e
-                      val acc' = increment (decToDecType dec, level) 1 acc
-                  in List.foldl (fn (vb, acc) => walkVb (level + 1) acc vb) acc'
-                       vblist
-                  end
-              | Ast.ValrecDec (rvblist, _) =>
-                  let fun walkExp l acc (Ast.LetExp {dec = d, ...}) =
-                             levelTraverseDecs l acc d
-                         | walkExp l acc (Ast.MarkExp (exp, _)) =
-                             walkExp l acc exp
-                         | walkExp l acc (Ast.SeqExp exps) =
-                             List.foldl (fn (exp, acc) => walkExp l acc exp)
-                               acc exps
-                         | walkExp l acc (Ast.FlatAppExp items) =
-                             List.foldl
-                               (fn ({item = exp, ...}, acc) =>
-                                 walkExp l acc exp)
-                               acc items
-                         | walkExp l acc _ = acc
-                       (* walkVb gets Ast.decs from a valrec declaration by
-                        * checking its expression for lets *)
-                       fun walkRvb l acc (Ast.MarkRvb (rvb, _)) =
-                             walkRvb l acc rvb
-                         | walkRvb l acc (Ast.Rvb {exp = e, ...}) =
-                             walkExp l acc e
-                       val acc' = increment (decToDecType dec, level) 1 acc
-                   in List.foldl (fn (rvb, acc) => walkRvb (level + 1) acc rvb)
-                        acc' rvblist
-                   end
-              | _ => increment (decToDecType dec, level) 1 acc)
-      in levelTraverseDecs 0 (emptyCounter decLevelCompare) parseTree
-      end
+    levelTraverseDecs (fn (d, l) => (decToDecType d, l)) (fn (_, l) => l + 1) 0
+      (emptyCounter decLevelCompare) parseTree
 
   (* see signature *)
   fun counterToList (f, cs) = cs
+  
+  (* see signature *)
+  fun levelPathCompare (xs, ys) =
+    List.collate
+      (fn (x,y) => String.compare (decTypeToString x, decTypeToString y))
+      (xs, ys)
+
+  (* create a counter of level paths showing which declarations are nested
+   * inside which other declarations *)
+  fun countLevelPaths parseTree =
+    let fun f (d, l) = decToDecType d :: l
+    in levelTraverseDecs f f [] (emptyCounter levelPathCompare) parseTree
+    end
 end
