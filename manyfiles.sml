@@ -1,4 +1,4 @@
-use "jgraph.sml";
+use "parsefile.sml";
 
 signature MANYFILES = sig
   (* given a list of line separated file names,
@@ -27,6 +27,10 @@ signature MANYFILES = sig
   (* get counts of fun, val, str declarations and the level of nesting *)
   val getDecLevelCounts : string list ->
                             (ParseFile.dectype * int) ParseFile.counter
+
+  (* get counts of fun, val, str declarations and the path of nesting *)
+  val getLevelPathCounts : string list ->
+                            (ParseFile.dectype list) ParseFile.counter
 
 end
 
@@ -118,4 +122,15 @@ structure ManyFiles :> MANYFILES = struct
                    ParseFile.mergeCounters (dc, acc)
                | NONE => acc)
         end) (ParseFile.emptyCounter ParseFile.decLevelCompare) fileList
+
+  (* see signature *)
+  fun getLevelPathCounts fileList =
+    List.foldl
+      (fn (f, acc) =>
+        let val decCount = parseFile f >= ParseFile.countLevelPaths
+        in (case decCount
+              of SOME dc =>
+                   ParseFile.mergeCounters (dc, acc)
+               | NONE => acc)
+        end) (ParseFile.emptyCounter ParseFile.levelPathCompare) fileList
 end

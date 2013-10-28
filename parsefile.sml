@@ -6,10 +6,6 @@ signature PARSEFILE = sig
    * in filename *)
   val readFile : string -> Ast.dec
 
-  (* foldDecs is a fold-like function for walking a parse tree. The tree-
-   * traversal is DFS. *)
-  val foldDecs : (Ast.dec * 'a -> 'a) -> 'a -> Ast.dec -> 'a
-
   (* algebraic datatype to locally describe the types of declarations *)
   datatype dectype = MARKDEC | OPENDEC | TYPEDEC | OVLDDEC | SEQDEC | FIXDEC
                    | LOCALDEC | FSIGDEC | SIGDEC | FCTDEC | ABSDEC | STRDEC
@@ -161,7 +157,8 @@ structure ParseFile :> PARSEFILE = struct
     in readAll f
     end
 
-  (* see signature *)
+  (* foldDecs is a fold-like function for walking a parse tree. The tree-
+   * traversal is DFS. *)
   fun foldDecs f acc dec =
     (case dec
        of Ast.MarkDec (m, _) =>
@@ -300,6 +297,9 @@ structure ParseFile :> PARSEFILE = struct
                 val acc' = f (dec, acc)
             in List.foldl (fn (rvb, acc) => walkRvb f acc rvb) acc' rvblist
             end)
+
+  (* type check *)
+  val _ = op foldDecs : (Ast.dec * 'a -> 'a) -> 'a -> Ast.dec -> 'a
 
   type 'a counter = ('a * 'a -> order) * ('a * int) list
 
@@ -871,14 +871,19 @@ structure ParseFile :> PARSEFILE = struct
   
   (* see signature *)
   fun levelPathCompare (xs, ys) =
-    List.collate
-      (fn (x,y) => String.compare (decTypeToString x, decTypeToString y))
-      (xs, ys)
+    let val (c1, c2) = (length xs, length ys)
+    in if c1 = c2
+       then List.collate
+              (fn (x,y) =>
+                String.compare (decTypeToString x, decTypeToString y))
+              (xs, ys)
+       else Int.compare (c1, c2)
+    end
 
   (* create a counter of level paths showing which declarations are nested
    * inside which other declarations *)
   fun countLevelPaths parseTree =
-    let fun f (d, l) = decToDecType d :: l
+    let fun f (d, l) = l @ [decToDecType d]
     in levelTraverseDecs f f [] (emptyCounter levelPathCompare) parseTree
     end
 end
