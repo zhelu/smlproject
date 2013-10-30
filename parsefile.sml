@@ -131,6 +131,9 @@ signature PARSEFILE = sig
   (* create a counter of level paths showing which declarations are nested
    * inside which other declarations *)
   val countLevelPaths : Ast.dec -> (dectype list) counter
+   
+  (* filter declaration counter by level *)
+  val filterByLevel : (dectype * int) counter -> int -> dectype counter
 
 end
 
@@ -880,10 +883,16 @@ structure ParseFile :> PARSEFILE = struct
        else Int.compare (c1, c2)
     end
 
-  (* create a counter of level paths showing which declarations are nested
-   * inside which other declarations *)
+  (* see signature *)
   fun countLevelPaths parseTree =
     let fun f (d, l) = l @ [decToDecType d]
     in levelTraverseDecs f f [] (emptyCounter levelPathCompare) parseTree
     end
+
+  (* see signature *)
+  fun filterByLevel (_, levelCounter) level =
+    (dectypeCompare,
+      map (fn ((x,_),c) => (x,c))
+        (List.filter (fn ((_,i),_) => i = level) levelCounter))
+
 end

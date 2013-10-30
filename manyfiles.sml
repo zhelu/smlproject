@@ -32,6 +32,10 @@ signature MANYFILES = sig
   val getLevelPathCounts : string list ->
                             (ParseFile.dectype list) ParseFile.counter
 
+  (* Given a counter of decs by level and a level, filter the counter by
+   * level *)
+  val filterByLevel : (ParseFile.dectype * int) ParseFile.counter -> int ->
+                        ParseFile.dectype ParseFile.counter
 end
 
 structure ManyFiles :> MANYFILES = struct
@@ -133,4 +137,7 @@ structure ManyFiles :> MANYFILES = struct
                    ParseFile.mergeCounters (dc, acc)
                | NONE => acc)
         end) (ParseFile.emptyCounter ParseFile.levelPathCompare) fileList
+
+  (* see signature *)
+  val filterByLevel = ParseFile.filterByLevel
 end
