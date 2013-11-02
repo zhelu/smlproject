@@ -198,7 +198,7 @@ structure ParseFile :> PARSEFILE = struct
            * checking its expression for let bindings *)
           fun walkClause f acc (A.Clause {exp = exp, ...}) = walkExp f acc exp
           (* walkFb gets Ast.dec types from a function definition
-           * by processing its clauses for letting bindings *)
+           * by processing its clauses for let bindings *)
           fun walkFb f acc (A.MarkFb (fb, _)) = walkFb f acc fb
             | walkFb f acc (A.Fb (clauses, _)) =
                 L.foldl (fn (clause, acc) => walkClause f acc clause)
@@ -510,8 +510,7 @@ structure ParseFile :> PARSEFILE = struct
             let
               val sym = Symbol.name s
             in
-              if n = "" then
-                getVarName (A.VarExp ss) sym
+              if n = "" then getVarName (A.VarExp ss) sym
               else getVarName (A.VarExp ss) (n ^ "." ^ sym)
             end
     in
@@ -628,7 +627,7 @@ structure ParseFile :> PARSEFILE = struct
             fun walkClause l acc (A.Clause {exp = exp, ...}) =
                      walkExp l acc exp
             (* walkFb gets Ast.dec types from a function definition
-             * by processing its clauses for letting bindings *)
+             * by processing its clauses for let bindings *)
             fun walkFb l acc (A.MarkFb (fb, _)) = walkFb l acc fb
               | walkFb l acc (A.Fb (clauses, _)) =
                   L.foldl
