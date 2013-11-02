@@ -1,10 +1,10 @@
-use "parsefile.sml";
+use "counter.sml";
 
 signature JGRAPH = sig
 
   (* take a counter, a title, and a filename to write jgraph format of a Zipf
    * file to file*)
-  val counterToZipf : ''a ParseFile.counter -> string -> string -> unit
+  val counterToZipf : ''a Counter.counter -> string -> string -> unit
 end
 
 structure JGraph :> JGRAPH = struct
