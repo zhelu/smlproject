@@ -40,9 +40,13 @@ end
 
 structure ManyFiles :> MANYFILES = struct
 
+  structure L = List
+  structure P = ParseFile
+  structure C = Counter
+
   (* given a filename, produce SOME parse tree if the parsing is successeful
      or NONE if the parsing fails *)
-  fun parseFile f = SOME (ParseFile.readFile f) handle _ => NONE
+  fun parseFile f = SOME (P.readFile f) handle _ => NONE
 
   (* type check *)
   val _ = op parseFile : string -> Ast.dec option
@@ -58,85 +62,91 @@ structure ManyFiles :> MANYFILES = struct
 
   (* see signature *)
   fun getFileList listFile =
-    let fun readList (inputFile : string) =
-          let val ins = TextIO.openIn inputFile
-              fun loop i =
-                case TextIO.inputLine i
-                  of SOME line => line :: loop i
-                   | NONE => []
-          in loop ins before TextIO.closeIn ins
-          end
-    in map (fn s => String.extract (s, 0, SOME (size s - 1)))
-         (readList listFile)
+    let
+      val ins = TextIO.openIn listFile
+      fun loop i =
+        case TextIO.inputLine i of
+          SOME line => line :: loop i
+        | NONE => []
+    in
+      map (fn s => String.extract (s, 0, SOME (size s - 1)))
+        (loop ins) before TextIO.closeIn ins
     end
 
   (* see signature *)
   fun getDecCount fileList decs =
-    List.foldl
+    L.foldl
       (fn (f, acc) =>
-        let val decCount = parseFile f >= (fn p => ParseFile.countDec decs p)
-        in (case decCount
-              of SOME dc => 
-                   Counter.mergeCounters (dc, acc)
-               | NONE => acc)
-        end) Counter.emptyCounter fileList
+        let
+          val decCount = parseFile f >= (fn p => P.countDec decs p)
+        in
+          case decCount of
+            SOME dc => C.mergeCounters (dc, acc)
+          | NONE => acc
+        end) C.emptyCounter fileList
 
   (* see signature *)
   fun getExpCount fileList exps =
-    List.foldl
+    L.foldl
       (fn (f, acc) =>
-        let val expCount = parseFile f >= (fn p => ParseFile.countExp exps p)
-        in (case expCount
-              of SOME ec => 
-                   Counter.mergeCounters (ec, acc)
-               | NONE => acc)
-        end) Counter.emptyCounter fileList
+        let
+          val expCount = parseFile f >= (fn p => P.countExp exps p)
+        in
+          case expCount of
+            SOME ec => C.mergeCounters (ec, acc)
+          | NONE => acc
+        end) C.emptyCounter fileList
 
   (* see signature *)
   fun countTopLevelDecs fileList =
-    List.foldl
+    L.foldl
       (fn (f, acc) =>
-        let val decCount = parseFile f >=
-                           ParseFile.getTopLevelDec >= 
+        let
+          val decCount = parseFile f >=
+                           P.getTopLevelDec >= 
                            (fn dc => map AstType.decToDecType dc) >=
-                           (fn ds => List.foldl
-                                       (fn (d, a) => Counter.increment d 1 a)
-                                       Counter.emptyCounter ds)
-        in (case decCount
-              of SOME dc =>
-                   Counter.mergeCounters (dc, acc)
-               | NONE => acc)
-        end) Counter.emptyCounter fileList
+                           (fn ds => L.foldl
+                                        (fn (d, a) => C.increment d 1 a)
+                                        C.emptyCounter ds)
+        in
+          case decCount of
+            SOME dc => C.mergeCounters (dc, acc)
+          | NONE => acc
+        end) C.emptyCounter fileList
 
   (* see signature *)
   fun countLines fileList =
-    let val okFiles = List.filter (fn f => parseFile f <> NONE) fileList
-        val counts = map ParseFile.getLineCount okFiles
-    in List.foldr (op +) 0 counts
+    let
+      val okFiles = L.filter (fn f => parseFile f <> NONE) fileList
+      val counts = map P.getLineCount okFiles
+    in
+      L.foldr (op +) 0 counts
     end
 
   (* see signature *)
   fun getDecLevelCounts fileList =
-    List.foldl
+    L.foldl
       (fn (f, acc) =>
-        let val decCount = parseFile f >= ParseFile.countDecLevel
-        in (case decCount
-              of SOME dc =>
-                   Counter.mergeCounters (dc, acc)
-               | NONE => acc)
-        end) Counter.emptyCounter fileList
+        let
+          val decCount = parseFile f >= P.countDecLevel
+        in
+          case decCount of
+            SOME dc => C.mergeCounters (dc, acc)
+          | NONE => acc
+        end) C.emptyCounter fileList
 
   (* see signature *)
   fun getLevelPathCounts fileList =
-    List.foldl
+    L.foldl
       (fn (f, acc) =>
-        let val decCount = parseFile f >= ParseFile.countLevelPaths
-        in (case decCount
-              of SOME dc =>
-                   Counter.mergeCounters (dc, acc)
-               | NONE => acc)
-        end) Counter.emptyCounter fileList
+        let
+          val decCount = parseFile f >= P.countLevelPaths
+        in
+          case decCount of
+            SOME dc => C.mergeCounters (dc, acc)
+          | NONE => acc
+        end) C.emptyCounter fileList
 
   (* see signature *)
-  val filterByLevel = ParseFile.filterByLevel
+  val filterByLevel = P.filterByLevel
 end

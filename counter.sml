@@ -34,13 +34,13 @@ structure Counter :> COUNTER = struct
   (* see signature *)
   fun getCountOf x [] = 0
     | getCountOf x ((y, c) :: rest) =
-        if x = y then c
-        else getCountOf x rest
+        if x = y then c else getCountOf x rest
 
   (* see signature *)
   fun increment x i [] = [(x, i)]
     | increment x i ((y, count) :: rest) =
-        if x = y then (y, count + i) :: rest
+        if x = y then
+          (y, count + i) :: rest
         else (y, count) :: increment x i rest
 
   (* see signature *)
