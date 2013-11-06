@@ -1,0 +1,118 @@
+\documentclass[12pt,abstracton]{scrartcl}
+%packages
+\usepackage{bbm}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{latexsym}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{texdraw}
+\usepackage{euscript}
+\usepackage{graphicx}
+\usepackage{multirow}
+\usepackage{mathrsfs}
+\usepackage{textcomp}
+\usepackage{color}
+\usepackage{fancyvrb}
+\usepackage{pstricks,pst-node,pst-tree}
+\usepackage{subfig}
+\usepackage{tikz}
+\usepackage{url}
+%margins
+\setlength{\textwidth}{6.5in} \setlength{\evensidemargin}{0in}
+\setlength{\oddsidemargin}{0in}
+\setlength{\textheight}{9in}
+%section start markers
+\newcommand{\lem}{\paragraph*{Lemma:}}
+\newcommand{\cor}{\paragraph*{Corollary:}}
+\newcommand{\prb}[1]{\section*{Problem {\text{#1}:}}}
+\newcommand{\sprb}[1]{\subsection*{Item {\text{#1}:}}}
+%abbreviations
+\newcommand{\fa}{\forall}
+\newcommand{\EE}{\exists}
+\newcommand{\ee}{\epsilon}
+\newcommand{\dd}{\delta}
+\newcommand{\rr}{\mathbb{R}}
+\newcommand{\rrx}{\rr^{\times}}
+\newcommand{\qq}{\mathbb{Q}}
+\newcommand{\nn}{\mathbb{N}}
+\newcommand{\zz}{\mathbb{Z}}
+\newcommand{\cc}{\mathbb{C}}
+\newcommand{\ccx}{\cc^{\times}}
+\newcommand{\oo}{\mathbb{O}}
+\newcommand{\hh}{\mathbb{H}}
+\newcommand{\pp}{\mathbb{P}}
+\newcommand{\prm}[1]{#1^{\prime}}
+\newcommand{\Letf}[3]{Let \({#1}:{#2}\rightarrow{#3}\) be}
+\newcommand{\pard}[2]{\frac{\partial {#1}}{\partial {#2}}}
+\newcommand{\FIT}{First Isomorphism Theorem}
+\newcommand{\img}{\mathrm{img}\ }
+\newcommand{\eq}[1]{\begin{equation}#1\end{equation}}
+\newcommand{\ceil}[1]{\left\lceil#1\right\rceil}
+\newcommand{\floor}[1]{\left\lfloor#1\right\rfloor}
+\newcommand{\ip}[2]{\langle{#1},{#2}\rangle}
+\newcommand{\contra}{\Rightarrow\Leftarrow}
+\newtheorem{thm}{Theorem}
+\newtheorem{clm}{Claim}
+%section end markers
+\newcommand{\Qed}{\hfill$\square$\newline\newline}
+\newcommand{\QED}{\hfill$\square$}
+%\renewcommand*\arraystretch{1.1}
+\renewcommand*{\thefootnote}{\arabic{footnote}}
+
+\title{Identifying Patterns in Expert ML Code\footnote{Pun intended}}
+\subtitle{Comp150FP Final Project\footnote{Submitted in partial fulfillment of the requirements for M.S. in computer science}}
+\author{Zhe Lu}
+\date{10 December 2013}
+
+\begin{document}
+\bibliographystyle{alpha}
+\input{epsf.sty}
+\maketitle
+\begin{abstract}
+The aim of this paper is two-fold: (1)~identify features common to code written in Standard ML by experts and
+(2)~evaluate how well expert ML code conforms to published style guides for ML.
+\end{abstract}
+\section{INTRODUCTION}
+There are many ways to define what an expert is.
+An often cited rule attributed to Malcolm Gladwell is that one requires 10000 hours of deliberate practice
+in a particular field to become an expert \cite{Gla08}. But if we want to provide novice programmers
+with specifics during these 10000 hours, what should we tell them? One challenge is that experts themselves
+do not necessarily know what features identify them as experts and what features are unique to them as individuals.
+
+I tackle this problem by examining source code written by experts. Section~\ref{sec:syntax} discusses an analysis
+of the distribution of syntactic forms. I look at how well expert code conforms to readily available
+style guides in section~\ref{sec:style}.
+
+For samples of expert code, I turned to prominent projects where the source code is readily available:
+\begin{enumerate}
+\item The SMLNJ compiler,\footnote{\url{http://smlnj.cs.uchicago.edu/dist/working/110.76/compiler.tgz}} whose parser was used extensively for code analysis in this project
+\item The MLKit compiler for SML\footnote{\url{http://www.itu.dk/research/mlkit/dist/mlkit-4.3.0-src.tgz}}
+\item FoxNet, an implementation of the standard TCP/IP networking protocol stack in SML\footnote{\url{ftp://ftp.cs.cmu.edu/project/fox/snapshot/foxnet.tar.gz}}
+\item Til, a type-directed compiler for ML\footnote{\url{http://www.cs.cornell.edu/Info/People/jgm/til.tar.Z}}
+\item MLton, an open-source, whole-program, optimizing SML compiler\footnote{\url{http://sourceforge.net/projects/mlton/files/mlton/20130715/mlton-20130715.src.tgz/download}}
+\end{enumerate}
+\section{SYNTACTIC FORMS}\label{sec:syntax}
+\subsection{Imperative Features}\label{subsec:imper}
+In Prof. Norman Ramsey's class on programming languages at Tufts University, one easy way to lose points
+on a given assignment was the unnecessary use \emph{imperative} language features when programming in a \emph{functional} language.
+In Standard ML, there are two main imperative constructs:
+(1)~the while expression and (2)~a list of expression separated by semicolons (similar to the \texttt{begin...end} syntax of Pascal)\cite{Ull98}.
+\subsection{Common Library Functions}\label{subsec:imp}
+\subsection{User-Defined Functions}\label{subsec:userfun}
+\subsection{Program Structure}\label{subsec:struct}
+\section{STYLE}\label{sec:style}
+\subsection{Tabs vs. Spaces}
+\subsection{The 80-Column Rule}
+\subsection{The Off-Side Rule}
+\subsection{Misuse in Expressions}
+\subsection{Newlines and Grouping}
+\section{IMPLEMENTATION}\label{sec:impl}
+\section{FUTURE WORK}\label{sec:future}
+\section*{Acknowledgments}
+\begin{thebibliography}{99}
+\bibitem[Gladwell 2008]{Gla08} Malcolm Gladwell. 2008. \emph{Outliers}. Little, Brown and Co., New York, NY.
+\bibitem[Ullman 1998]{Ull98} Jeffrey D.\,Ullman. 1998. \emph{Elements of ML Programming} (ML97 Ed). Prentice Hall, Upper Saddle River, NJ.
+\bibitem[Binkley 2007]{Bin07} David Binkley. 2007. Source Code Analysis: A Road Map. In \emph{Proceedings of the Interalnational Conference on Software Engineering (ICSE'07), Workshop on the Future of Software Engineering (FOSE'07)} IEEE Computer Society, Washington, DC, 104--119. DOI:\url{http://dx.doi.org/10.1109/FOSE.2007.27}
+\end{thebibliography}
+\end{document}

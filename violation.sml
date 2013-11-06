@@ -102,9 +102,9 @@ structure Violation :> VIOLATION = struct
     let
       fun addOffside (loc: SourceMap.sourceloc) acc sm p =
         let 
-          val c = #column(loc)
+          val {column = c,...} = loc
           val loc' = SourceMap.filepos sm (p - 1)
-          val c' = #column(loc')
+          val {column = c',...} = loc'
         in
           if c' < c then
             (loc', OFFSIDE {line = #line(loc), inside = #line(loc')} :: acc)
