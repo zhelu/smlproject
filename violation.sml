@@ -158,6 +158,56 @@ structure Violation :> VIOLATION = struct
             List.foldl
               (fn ({item = exp, ...}, acc) => walkExp loc acc sm exp)
               acc items
+        | walkExp loc acc sm (Ast.FnExp rules) =
+            List.foldl
+              (fn (Ast.Rule {exp = e,...}, a) => walkExp loc a sm e) acc rules
+        | walkExp loc acc sm (Ast.CaseExp {expr = exp, rules = rules}) =
+            List.foldl
+              (fn (Ast.Rule {exp = e,...}, a) => walkExp loc a sm e)
+              (walkExp loc acc sm exp) rules
+        | walkExp loc acc sm (Ast.RecordExp rs) =
+            List.foldl
+              (fn ((_, e), a) => walkExp loc a sm e) acc rs
+        | walkExp loc acc sm (Ast.ListExp es) =
+            List.foldl
+              (fn (e, a) => walkExp loc a sm e) acc es
+        | walkExp loc acc sm (Ast.TupleExp es) =
+            List.foldl
+              (fn (e, a) => walkExp loc a sm e) acc es
+        | walkExp loc acc sm (Ast.HandleExp {expr = exp, rules = rules}) =
+            List.foldl
+              (fn (Ast.Rule {exp = e,...}, a) => walkExp loc a sm e)
+              (walkExp loc acc sm exp) rules
+        | walkExp loc acc sm (Ast.VectorExp es) =
+            List.foldl
+              (fn (e, a) => walkExp loc a sm e) acc es
+        | walkExp loc acc sm (Ast.IfExp {test = t,
+                                         thenCase = th,
+                                         elseCase = el}) =
+            let
+              val acc' = walkExp loc acc sm t
+              val acc'' = walkExp loc acc' sm th
+            in
+              walkExp loc acc'' sm el
+            end
+        | walkExp loc acc sm (Ast.AndalsoExp (e1, e2)) =
+            let
+              val acc' = walkExp loc acc sm e1
+            in
+              walkExp loc acc' sm e2
+            end
+        | walkExp loc acc sm (Ast.OrelseExp (e1, e2)) =
+            let
+              val acc' = walkExp loc acc sm e1
+            in
+              walkExp loc acc' sm e2
+            end
+        | walkExp loc acc sm (Ast.WhileExp {test = t, expr = e}) =
+            let
+              val acc' = walkExp loc acc sm t
+            in
+              walkExp loc acc' sm e
+            end
         | walkExp _ acc _ _ = acc
       (* walkClause gets Ast.decs from a clause by
        * checking its expression for let bindings *)
