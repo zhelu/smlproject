@@ -80,11 +80,9 @@ in a particular field to become an expert \cite{Gla08}. But if we want to provid
 with specifics during these 10000 hours, what should we tell them? One challenge is that experts themselves
 do not necessarily know what features identify them as experts and what features are unique to them as individuals.
 
-I tackle this problem by examining source code written by experts. Section~\ref{sec:syntax} discusses an analysis
-of the distribution of syntactic forms. I look at how well expert code conforms to readily available
-style guides in section~\ref{sec:style}.
-
-Source code analysis has been a topic of intense interest.
+I attempt to shed light onto this project by employing software metrics, by trying to find measureable quantities
+that provide some metric for evaluating software. Specifically,
+I approach this problem by examining source code written by experts. Source code analysis has been a topic of interest.
 
 For samples of expert code, I turned to prominent projects where the source code is readily available:
 \begin{enumerate}
@@ -94,6 +92,32 @@ For samples of expert code, I turned to prominent projects where the source code
 \item Til, a type-directed compiler for ML\footnote{\url{http://www.cs.cornell.edu/Info/People/jgm/til.tar.Z}}
 \item MLton, an open-source, whole-program, optimizing SML compiler\footnote{\url{http://sourceforge.net/projects/mlton/files/mlton/20130715/mlton-20130715.src.tgz/download}}
 \end{enumerate}
+
+The layout of this paper is as follow.
+Section~\ref{sec:metric} provides a very brief background
+concerning software metrics and source code analysis.
+I look at how well expert code conforms to readily available
+style guides in section~\ref{sec:style}.
+Section~\ref{sec:syntax} discusses an analysis
+of the distribution of syntactic forms. The implementation is discussed
+in section~\ref{sec:impl}. Finally, I conclude and reflect in section~\ref{sec:future}.
+\section{SOFTWARE METRICS AND SOURCE CODE ANALYSIS}\label{sec:metric}
+A definition from Binkley is \cite{Bin07}:
+\begin{quote}
+\emph{Source code analysis} is the process of extracting
+information about a program from its source code
+or artifacts (e.g., from Java byte code or execution
+traces) generated from the source code using automatic tools.
+\emph{Source code} is any static, textual,
+human readable, fully executable description of
+a computer program that can be compiled automatically into an executable form.
+\end{quote}
+\section{STYLE}\label{sec:style}
+\subsection{Tabs vs. Spaces}
+\subsection{The 80-Column Rule}
+\subsection{The Off-Side Rule}
+\subsection{Misuse in Expressions}
+\subsection{Newlines and Grouping}
 \section{SYNTACTIC FORMS}\label{sec:syntax}
 \subsection{Imperative Features}\label{subsec:imper}
 In Prof. Norman Ramsey's class on programming languages at Tufts University, one easy way to lose points
@@ -103,14 +127,8 @@ In Standard ML, there are two main imperative constructs:
 \subsection{Common Library Functions}\label{subsec:imp}
 \subsection{User-Defined Functions}\label{subsec:userfun}
 \subsection{Program Structure}\label{subsec:struct}
-\section{STYLE}\label{sec:style}
-\subsection{Tabs vs. Spaces}
-\subsection{The 80-Column Rule}
-\subsection{The Off-Side Rule}
-\subsection{Misuse in Expressions}
-\subsection{Newlines and Grouping}
 \section{IMPLEMENTATION}\label{sec:impl}
-\section{FUTURE WORK}\label{sec:future}
+\section{CONCLUSIONS AND FUTURE WORK}\label{sec:future}
 \section*{Acknowledgments}
 \begin{thebibliography}{99}
 \bibitem[Gladwell 2008]{Gla08} Gladwell, M. (2008) \emph{Outliers}. Little, Brown and Co., New York, NY.

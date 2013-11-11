@@ -143,8 +143,8 @@ structure Violation :> VIOLATION = struct
         | walkStrDec loc acc sm (Ast.MarkStrb (strb, _)) =
             walkStrDec loc acc sm strb
       (* walkExp gets Ast.decs from an expression *)
-      fun walkExp loc acc sm (Ast.LetExp {dec = d, ...}) =
-            traverseDecs loc acc sm d
+      fun walkExp loc acc sm (Ast.LetExp {dec = d, expr = e}) =
+            traverseDecs loc (walkExp loc acc sm e) sm d
         | walkExp loc acc sm (Ast.MarkExp (exp, (p,_))) =
             let
               val (loc', acc') = addOffside loc acc sm p
@@ -215,33 +215,21 @@ structure Violation :> VIOLATION = struct
             walkExp loc acc sm exp
       (* walkFb gets Ast.dec types from a function definition
        * by processing its clauses for let bindings *)
-      fun walkFb loc acc sm (Ast.MarkFb (fb, (p,_))) =
-            let
-              val (loc', acc') = addOffside loc acc sm p
-            in
-              walkFb loc' acc' sm fb
-            end
+      fun walkFb loc acc sm (Ast.MarkFb (fb, _)) =
+            walkFb loc acc sm fb
         | walkFb loc acc sm (Ast.Fb (clauses, _)) =
             List.foldl
               (fn (clause, acc) => walkClause loc acc sm clause)
               acc clauses
       (* walkVb gets Ast.decs from a val declaration by checking
        * its expression for lets *)
-      fun walkVb loc acc sm (Ast.MarkVb (vb, (p,_))) =
-            let
-              val (loc', acc') = addOffside loc acc sm p
-            in
-              walkVb loc' acc' sm vb
-            end
+      fun walkVb loc acc sm (Ast.MarkVb (vb, _)) =
+            walkVb loc acc sm vb
         | walkVb loc acc sm (Ast.Vb {exp = e, ...}) = walkExp loc acc sm e
       (* walkVb gets Ast.decs from a valrec declaration by
        * checking its expression for lets *)
-      fun walkRvb loc acc sm (Ast.MarkRvb (rvb, (p,_))) =
-            let
-              val (loc', acc') = addOffside loc acc sm p
-            in
-              walkRvb loc' acc' sm rvb
-            end
+      fun walkRvb loc acc sm (Ast.MarkRvb (rvb, _)) =
+            walkRvb loc acc sm rvb
         | walkRvb loc acc sm (Ast.Rvb {exp = e, ...}) =
              walkExp loc acc sm e
     in
