@@ -82,11 +82,11 @@ do not necessarily know what features identify them as experts and what features
 
 I attempt to shed light onto this project by employing software metrics, by trying to find measureable quantities
 that provide some metric for evaluating software. Specifically,
-I approach this problem by examining source code written by experts. Source code analysis has been a topic of interest.
+I approach this problem by examining source code written by experts.
 
 For samples of expert code, I turned to prominent projects where the source code is readily available:
 \begin{enumerate}
-\item The SMLNJ compiler,\footnote{\url{http://smlnj.cs.uchicago.edu/dist/working/110.76/compiler.tgz}} whose parser was used extensively for code analysis in this project
+\item The Standard ML of New Jersey compiler (SMLNJ),\footnote{\url{http://smlnj.cs.uchicago.edu/dist/working/110.76/compiler.tgz}} whose parser was used extensively for code analysis in this project
 \item The MLKit compiler for SML\footnote{\url{http://www.itu.dk/research/mlkit/dist/mlkit-4.3.0-src.tgz}}
 \item FoxNet, an implementation of the standard TCP/IP networking protocol stack in SML\footnote{\url{ftp://ftp.cs.cmu.edu/project/fox/snapshot/foxnet.tar.gz}}
 \item Til, a type-directed compiler for ML\footnote{\url{http://www.cs.cornell.edu/Info/People/jgm/til.tar.Z}}
@@ -102,7 +102,23 @@ Section~\ref{sec:syntax} discusses an analysis
 of the distribution of syntactic forms. The implementation is discussed
 in section~\ref{sec:impl}. Finally, I conclude and reflect in section~\ref{sec:future}.
 \section{SOFTWARE METRICS AND SOURCE CODE ANALYSIS}\label{sec:metric}
-A definition from Binkley is \cite{Bin07}:
+\subsection{SOFTWARE METRICS}
+One way to tackle the challenges and complexities of software development is to employ
+\emph{software metrics}. These metrics allow developers and their managers to make
+measurements about cost and effort, productivity, assessment of reliability and
+quality, evaluating processes (including development and maintenance), and elements
+related to project and product management.\cite{Ord08} Despite being around since
+the early 1970s, there are still some significant issues with how measurements
+about software are made in practice (see for example \cite{Jon94} and \cite{Bou12}).
+Nevertheless, due to the high level of potential utility from prudent measurements,
+a growing number of organizations have integrated software measurement programs into
+their workflows.\cite{Ord08}
+
+For my project, the whole of software metrics is too monolithic to employ on
+such a small-scale project. Therefore, I aim to look at a more specific set of measurements,
+namely dealing with style. This approach has been used for C++\cite{Aye98} and C\cite{Tak11}.
+\subsection{SOURCE CODE ANALYSIS}
+\cite{Bin07} provides a definition:
 \begin{quote}
 \emph{Source code analysis} is the process of extracting
 information about a program from its source code
@@ -112,6 +128,13 @@ traces) generated from the source code using automatic tools.
 human readable, fully executable description of
 a computer program that can be compiled automatically into an executable form.
 \end{quote}
+
+According to \cite{Bin07}, source code analysis has three components: a parser,
+the internal representation, and the analysis of this representation.
+Internal representations are many and varied, including abstract syntax trees,
+control-flow graphs, and call graphs.
+We use the parser of the Standard ML of New Jersey compiler along with the accompanying
+abstract syntax tree that it produces to perform our analyses.
 \section{STYLE}\label{sec:style}
 \subsection{Tabs vs. Spaces}
 \subsection{The 80-Column Rule}
@@ -121,9 +144,102 @@ a computer program that can be compiled automatically into an executable form.
 \section{SYNTACTIC FORMS}\label{sec:syntax}
 \subsection{Imperative Features}\label{subsec:imper}
 In Prof. Norman Ramsey's class on programming languages at Tufts University, one easy way to lose points
-on a given assignment was the unnecessary use \emph{imperative} language features when programming in a \emph{functional} language.
-In Standard ML, there are two main imperative constructs:
-(1)~the while expression and (2)~a list of expression separated by semicolons (similar to the \texttt{begin...end} syntax of Pascal)\cite{Ull98}.
+on any assignment was the unnecessary use \emph{imperative} language features when programming in a \emph{functional} language.\footnote{See, for example: \url{http://www.cs.tufts.edu/comp/105-2013s/homework/scheme.html}, specifically, the section titled ``Dire Warnings''}
+In Standard ML, there are two main imperative constructs in terms of expressions:
+(1)~the \texttt{while} expression and (2)~a list of expression separated by semicolons (similar to the \texttt{begin...end} syntax of Pascal)\cite{Ull98}.
+The former has the form \texttt{while <boolean-expression> do <expression>} and always returns a value of unit type.
+The return value indicates that the \texttt{while} expression's purpose is to produce the side-effects associated
+with the expression in its body. The sequence of expressions evaluates only to the last in that sequence, indicating
+in a similar fashion, that all expressions in the list except for the last are evaluated for side-effects.
+
+Of course, one of the paradigms in writing functional programs is to avoid side-effects.
+Such a principled approach allows us to reason better about correctness and
+removes the constraints imposed by having a fixed order of execution.\cite{Hug90} Therefore,
+it behooves us to examine whether such imperative features are necessary or avoidable.
+\subsubsection{Expressions with \texttt{while}}
+\begin{table}[h!]
+\centering
+\begin{tabular}{|c||c|c||c|c|c|}
+\hline
+Source project & \multicolumn{2}{c||}{Instances of \texttt{while}} & Lines & \multicolumn{2}{c|}{Lines per instance} \\ \cline{2-3}\cline{5-6}
+ & total & outside of tests &  & total & outside of tests \\ \hline\hline
+SMLNJ & 0 & 0 & 81124 & -- & --\\ 
+MLKit & 18 & 0 & 530334 & 29463 & --\\
+FoxNet & 0 & 0 & 8545 & -- & -- \\
+Til & 104 & 1 & 222317 & 2137.66 & 222317 \\
+MLton & 20 & 0 & 168323 & 8416.15 & --\\ \hline
+\end{tabular}
+\caption{Occurrences of \texttt{while} expressions}
+\label{table:while}
+\end{table}
+As we can see from Table~\ref{table:while}, two of the projects -- SMLNJ and FoxNet -- contain no occurrences
+of \texttt{while} loops at all.
+
+MLKit contains a few handfuls of \texttt{while} usages, but these instances
+occur in regression tests for the \texttt{Word8Array} structure and not in the actual implementation of the compiler.
+The 20 occurrences of \texttt{while} expressions in MLton are likewise found in code for regression testing but
+also in MLton's benchmarks suite.
+
+Of the 104 instances of a \texttt{while} expression in the Til project,
+only 1 of these was found outside of a source file used for regression or benchmark testing.
+This singleton appears to be used to ``touch''
+structures in order to ``drag in'' other needed structures.\footnote{This analysis is roughly gleamed from limited comments in the source code.}
+The body of the while loop includes modifying a mutable reference, which justifies the use of
+an imperative feature. Nevertheless, it is unclear whether we might be able to rewrite the code
+to avoid the use of mutable variables altogether.
+
+Overall, we can observe that there are very few usages of \texttt{while} expressions
+in expert projects (on average, one occurrence per about 2000 lines of code).
+When code used for testing is excluded from the analysis, I found only one use
+of a \texttt{while} expression which was used to modify mutable data.
+From the analysis, expert ML programmers seemed quite principled in avoiding imperative
+elements of ML. This is perhaps not surprising since they could have chosen
+to implement in any language but selected a functional language in the end.
+I therefore recommend that beginners avoid using \texttt{while} loops completely.
+\subsubsection{Expression List}
+\begin{table}[h!]
+\centering
+\begin{tabular}{|c||c|c||c|c|c|}
+\hline
+Source project & Instances of expression lists & Lines & Lines per instance \\ \hline\hline
+SMLNJ & 1970 & 81124 & 41.18 \\ 
+MLKit & 7900 & 530334 & 67.13 \\
+FoxNet & 77 & 8545 & 111.0 \\
+Til & 4414 & 222317 & 50.37 \\
+MLton & 1907 & 168323 & 88.27 \\ \hline
+\end{tabular}
+\caption{Occurrences of \texttt{while} expressions}
+\label{table:explist}
+\end{table}
+Table~\ref{table:explist} shows how often expression lists are used in our
+examples of expert ML code. We find that the number of uses is significantly
+greater than that of the \texttt{while} expression. The greatest number
+of occurrences, normalized by the number of lines, appears to be in the SMLNJ
+compiler where we find an expression list on average once every with every
+40 or so lines of code.
+
+The expression lists are likely used for the side-effects of the non-terminal
+expression in the list. Sadly, the expressions are quite complex and difficult
+to aggregate into meaningful groupings programmatically. Nevertheless,
+looking at the examples of expression lists in the expert code, we find that
+the expression lists frequently occur in the following contexts:
+\begin{itemize}
+\item[$\bullet$] pretty printing
+\item[$\bullet$] outputting error messages
+\item[$\bullet$] other types of I/O
+\item[$\bullet$] assignment of reference variables (with \texttt{:=})
+\item[$\bullet$] arrays
+\end{itemize}
+
+Haskell has the IO monad to allow users to perform I/O in a purely functional way. \cite{Jon93}
+Standard ML does not, so users are left to perform their
+I/O unsafely in imperative fashion.
+
+Arrays and references are two examples that \cite{Ull98} cites as way to ``violate the functional,
+side-effect-free style,'' but also noting that ``there are situations where programs cannot
+be made adequately efficient unless we are allowed to change some value bindings.''
+Like Ullman, I recommend to the beginner to use these syntactic forms only
+when necessary.
 \subsection{Common Library Functions}\label{subsec:imp}
 \subsection{User-Defined Functions}\label{subsec:userfun}
 \subsection{Program Structure}\label{subsec:struct}
@@ -133,9 +249,14 @@ In Standard ML, there are two main imperative constructs:
 \begin{thebibliography}{99}
 \bibitem[Gladwell 2008]{Gla08} Gladwell, M. (2008) \emph{Outliers}. Little, Brown and Co., New York, NY.
 \bibitem[Ullman 1998]{Ull98} Ullman, J.\,D. (1998) \emph{Elements of ML Programming} (ML97 Ed). Prentice Hall, Upper Saddle River, NJ.
-\bibitem[Binkley 2007]{Bin07} Binkley, D. (2007) Source Code Analysis: A Road Map. In \emph{Proceedings of the Interalnational Conference on Software Engineering (ICSE'07), Workshop on the Future of Software Engineering (FOSE'07)}. 104--119. DOI:\url{http://dx.doi.org/10.1109/FOSE.2007.27}
+\bibitem[Binkley 2007]{Bin07} Binkley, D., 2007. Source Code Analysis: A Road Map. In \emph{Workshop on the Future of Software Engineering (FOSE'07)}. Minneapolis, MN. 104--119. Washington, D.C.: IEEE Computer Society.
 \bibitem[Vogelsang et al. 2010]{Vog10} Vogelsang, S., Fehnker, A., Huuck, R., Reif, W. (2010) Software Metrics in Static Program Analysis. In \emph{Formal Methods and Software Engineering. Proceedings 12th International Conference on Formal Engineering Methods (ICFEM'10)}. 485--500.
-\bibitem[Ayerbe et al. 1998]{Aye98} Ayerbe, A., Vazquez, I. (1998) Software Products Quality Improvement with a Programming Style Guide and a Measurement Process. In \emph{Proceedings
-22nd Annual International Computer Software and Applications Conference (COMPSAC'98)}. 172--178. DOI:\url{http://dx.doi.org/10.1109/WPC.2004.1311066}
+\bibitem[Ordonez and Hadda 2008]{Ord08} Ordonez, M.\,J. Hadda, H.\,M. (2008) The State of Metrics in Software Industry. In \emph{5th International Conference Information Technology: New Generations (ITNG'08)} Las Vegas, NV. 453--458. Washington, D.C.: IEEE Computer Society.
+\bibitem[Ayerbe and Vazquez 1998]{Aye98} Ayerbe, A., Vazquez, I. (1998) Software Products Quality Improvement with a Programming Style Guide and a Measurement Process. In \emph{Proceedings 22nd Annual International Computer Software and Applications Conference (COMPSAC'98)}. 172--178.
+\bibitem[Bouwers et al. 2012]{Bou12} Bouwers, E., Visser, J., van Deursen, A. (2012) Getting what you measure. \emph{Commun. ACM}, \textbf{55}, 54--59.
+\bibitem[Jones 1994]{Jon94} Jones, C. (1994) Software metrics: good, bad and missing. \emph{Computers}, \textbf{27}, 98--100.
+\bibitem[Takai et al. 2011]{Tak11} Takai, Y., Kobayashi, T., Agusa, K. (2011) Software Metrics Based on Coding Standards Violations. In \emph{2011 Joint Conference of the 21st Int'l Workshop on Software Measurement and 6th Int'l Conference on Software Process and Product Measurement (IWSM-MENSURA)} Nara, Japan. 273--278. Washington, D.C.: IEEE Computer Society.
+\bibitem[Hughes 90]{Hug90} Hughes, J. (1990) Why Functional Programming MAtters. In D.\,A.\,Turner, ed, \emph{Research Topics in Functional Programming}. Boston, MA: Addison Wesley.
+\bibitem[Peyton Jones, Wadler 1993]{Jon93} Peyton Jones, S.\,L., Wadler, P. (1993) Imperative Functional Programming. In \emph{ACM Symposium on Principles of Programming Languages (POPL'93)}. Charleston, SC. 71--84. New York, NY: ACM.
 \end{thebibliography}
 \end{document}

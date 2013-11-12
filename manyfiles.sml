@@ -36,6 +36,15 @@ signature MANYFILES = sig
    * level *)
   val filterByLevel : (AstType.dectype * int) Counter.counter -> int ->
                         AstType.dectype Counter.counter
+
+  (* Given a list of files, list all files that contain a SeqExp with
+   * length greater than 1 *)
+  val findNontrivialSeqExp : string list -> string list
+
+  (* Given a filter predicate and a list of files, count all variable names
+   * that satisfy the predicate in all parseable files. *)
+  val countAppVars : (string -> bool) -> string list -> int
+
 end
 
 structure ManyFiles :> MANYFILES = struct
@@ -149,4 +158,33 @@ structure ManyFiles :> MANYFILES = struct
 
   (* see signature *)
   val filterByLevel = P.filterByLevel
+
+  (* see signature *)
+  fun findNontrivialSeqExp fileList =
+    L.foldl
+      (fn (f, acc) =>
+        let
+          val e = parseFile f >= (fn p => P.findExp [AstType.SEQEXP] p)
+        in
+          case e of
+            SOME es =>
+              if length
+                   (List.filter (fn (Ast.SeqExp xs) => length xs > 1) es) > 1
+              then f :: acc
+              else acc
+          | NONE => acc
+        end) [] fileList
+
+  (* see signature *)
+  fun countAppVars p fileList =
+    L.foldl
+      (fn (f, acc) =>
+        let
+          val names = parseFile f >= ParseFile.getAppVars
+        in
+          case names of
+            SOME xs => length (List.filter p xs) + acc
+          | NONE => acc
+        end) 0 fileList
+
 end

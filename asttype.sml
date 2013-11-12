@@ -157,7 +157,7 @@ structure AstType :> ASTTYPE = struct
 
   (* see signature *)
   val keyExp = [FNEXP, CASEEXP, LETEXP, SELECTOREXP, CONSTRAINTEXP,
-                HANDLEEXP, RAISEEXP, WHILEEXP, VECTOREXP]
+                HANDLEEXP, RAISEEXP, SEQEXP, WHILEEXP, VECTOREXP]
 
   (* see signature *)
   val allExp = [VAREXP, FNEXP, FLATAPPEXP, APPEXP, CASEEXP, LETEXP, INTEXP,

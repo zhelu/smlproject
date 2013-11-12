@@ -416,11 +416,20 @@ structure ParseFile :> PARSEFILE = struct
   (* see signature *)
   fun countExp countedExps parseTree =
     foldExprs (fn (exp, acc) =>
-                (case (L.find
-                        (fn x => x = T.expToExpType exp) countedExps)
-                   of NONE => acc
-                    | SOME _ =>
-                       C.increment (T.expToExpType exp) 1 acc))
+                let
+                  val exptype = T.expToExpType exp
+                in
+                  (case (L.find
+                          (fn x => x = exptype) countedExps) of
+                     NONE => acc
+                   | SOME _ =>
+                       (case exp of
+                          A.SeqExp xs =>
+                            if length xs > 1 then
+                              C.increment exptype 1 acc
+                            else acc
+                        | _ => C.increment exptype 1 acc))
+                end)
               C.emptyCounter parseTree
 
   (* see signature *)
