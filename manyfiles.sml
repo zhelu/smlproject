@@ -1,4 +1,4 @@
-use "parsefile.sml";
+use "violation.sml";
 
 signature MANYFILES = sig
   (* given a list of line separated file names,
@@ -44,6 +44,11 @@ signature MANYFILES = sig
   (* Given a filter predicate and a list of files, count all variable names
    * that satisfy the predicate in all parseable files. *)
   val countAppVars : (string -> bool) -> string list -> int
+
+  (* Given a violation aggregator from the violation structure and a list of
+   * files, find all violations of that type in the supplied files. *)
+  val getViolations : (string -> Violation.violation list) -> string list ->
+                        Violation.violation list
 
 end
 
@@ -187,4 +192,7 @@ structure ManyFiles :> MANYFILES = struct
           | NONE => acc
         end) 0 fileList
 
+  (* see signature *)
+  fun getViolations violationF fileList =
+    L.foldl (fn (f, acc) => violationF f @ acc) [] fileList
 end

@@ -229,6 +229,7 @@ the expression lists frequently occur in the following contexts:
 \item[$\bullet$] other types of I/O
 \item[$\bullet$] assignment of reference variables (with \texttt{:=})
 \item[$\bullet$] arrays
+\item[$\bullet$] with the keyword \texttt{use} or the compilation manager to bring in other modules
 \end{itemize}
 
 Haskell has the IO monad to allow users to perform I/O in a purely functional way. \cite{Jon93}
@@ -238,14 +239,16 @@ I/O unsafely in imperative fashion.
 Arrays and references are two examples that \cite{Ull98} cites as way to ``violate the functional,
 side-effect-free style,'' but also noting that ``there are situations where programs cannot
 be made adequately efficient unless we are allowed to change some value bindings.''
-Like Ullman, I recommend to the beginner to use these syntactic forms only
-when necessary.
+
+Imperative features are clearly unavoidable as evidenced in expert ML code. The experts do
+limit their uses of expression lists to a few general cases, mostly dominated by I/O.
+I conclude that the ML experts believe in the ``functional, side-effect-free'' style
+and conform to it as much as possible. Beginners in ML are encouraged for follow their example.
 \subsection{Common Library Functions}\label{subsec:imp}
 \subsection{User-Defined Functions}\label{subsec:userfun}
 \subsection{Program Structure}\label{subsec:struct}
 \section{IMPLEMENTATION}\label{sec:impl}
 \section{CONCLUSIONS AND FUTURE WORK}\label{sec:future}
-\section*{Acknowledgments}
 \begin{thebibliography}{99}
 \bibitem[Gladwell 2008]{Gla08} Gladwell, M. (2008) \emph{Outliers}. Little, Brown and Co., New York, NY.
 \bibitem[Ullman 1998]{Ull98} Ullman, J.\,D. (1998) \emph{Elements of ML Programming} (ML97 Ed). Prentice Hall, Upper Saddle River, NJ.
