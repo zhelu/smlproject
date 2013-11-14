@@ -88,7 +88,7 @@ structure Violation :> VIOLATION = struct
               end
             else loop (p + 1)
     in
-      loop 1
+      loop 1 before TextIO.closeIn instrm
     end
 
   (* traverseDecs takes a fileloc parameter, a

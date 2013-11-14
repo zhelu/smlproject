@@ -136,7 +136,34 @@ control-flow graphs, and call graphs.
 We use the parser of the Standard ML of New Jersey compiler along with the accompanying
 abstract syntax tree that it produces to perform our analyses.
 \section{STYLE}\label{sec:style}
+\subsection{Style Guides}\label{subsec:guide}
+If we wish to examine how well expert code conforms to style, we need to decide
+what good style is. A quick search of the web found a few style guides, from which
+we will distill a few points of style to examine in the expert code:
+\begin{enumerate}
+\item CS312 SML Style Guide, from Cornell\footnote{\url{http://www.cs.cornell.edu/courses/cs312/2008sp/handouts/style.htm}}
+\item SML Style Guide, from CMU\footnote{\url{http://www.cs.cmu.edu/~15150/resources/style.pdf}}
+\item Syntactic Conventions, from MLton website\footnote{\url{http://mlton.org/SyntacticConventions}}
+\end{enumerate}
+Let's take a look at what we can discover.
 \subsection{Tabs vs. Spaces}
+If one wishes to start a flame war on StackOverflow, one simply needs to start
+a debate over spaces and tabs. The three style guides, nevertheless, are
+united on the view that tabs are taboo in SML code. Perhaps this stems
+from a desire to indent code in order to align the features of different lines
+for maximum readability. Tabs, which are potentially rendered differently for
+different users, cannot be used to consistently provide the desired indentation.
+\begin{table}[h!]
+\begin{tabular}{|c||c|c||c|}
+\hline
+Project & Tabs & Lines & Lines per instance \\ \hline\hline
+SMLNJ & 0 & 0 & 0 \\
+MLKit & 0 & 0 & 0 \\
+FoxNet & 0 & 0 & 0 \\
+Til & 0 & 0 & 0 \\
+MLton & 0 & 0 & 0 \\ \hline
+\end{tabuler}
+\end{table}
 \subsection{The 80-Column Rule}
 \subsection{The Off-Side Rule}
 \subsection{Misuse in Expressions}
@@ -161,7 +188,7 @@ it behooves us to examine whether such imperative features are necessary or avoi
 \centering
 \begin{tabular}{|c||c|c||c|c|c|}
 \hline
-Source project & \multicolumn{2}{c||}{Instances of \texttt{while}} & Lines & \multicolumn{2}{c|}{Lines per instance} \\ \cline{2-3}\cline{5-6}
+Project & \multicolumn{2}{c||}{Instances of \texttt{while}} & Lines & \multicolumn{2}{c|}{Lines per instance} \\ \cline{2-3}\cline{5-6}
  & total & outside of tests &  & total & outside of tests \\ \hline\hline
 SMLNJ & 0 & 0 & 81124 & -- & --\\ 
 MLKit & 18 & 0 & 530334 & 29463 & --\\
@@ -201,7 +228,7 @@ I therefore recommend that beginners avoid using \texttt{while} loops completely
 \centering
 \begin{tabular}{|c||c|c||c|c|c|}
 \hline
-Source project & Instances of expression lists & Lines & Lines per instance \\ \hline\hline
+Project & Instances of expression lists & Lines & Lines per instance \\ \hline\hline
 SMLNJ & 1970 & 81124 & 41.18 \\ 
 MLKit & 7900 & 530334 & 67.13 \\
 FoxNet & 77 & 8545 & 111.0 \\
