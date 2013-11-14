@@ -50,6 +50,11 @@ signature MANYFILES = sig
   val getViolations : (string -> Violation.violation list) -> string list ->
                         Violation.violation list
 
+  (* Given a violation aggregator from the violation structure and a list of
+   * files, find all violations of that type in the supplied files, returning
+   * a list of pairs of files and their violations *)
+  val getViolationsByFile : (string -> Violation.violation list) -> string list ->
+                              (string * Violation.violation list) list
 end
 
 structure ManyFiles :> MANYFILES = struct
@@ -194,5 +199,25 @@ structure ManyFiles :> MANYFILES = struct
 
   (* see signature *)
   fun getViolations violationF fileList =
-    L.foldl (fn (f, acc) => violationF f @ acc) [] fileList
+    L.foldl
+      (fn (f, acc) =>
+        let
+          val vs = parseFile f
+        in
+          case vs of
+            SOME _ => violationF f @ acc
+          | NONE => acc
+        end) [] fileList
+
+  (* see signature *)
+  fun getViolationsByFile violationF fileList =
+    L.foldl
+      (fn (f, acc) =>
+        let
+          val vs = parseFile f
+        in
+          case vs of
+            SOME _ => (f, violationF f) :: acc
+          | NONE => acc
+        end) [] fileList
 end

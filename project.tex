@@ -116,7 +116,7 @@ their workflows.\cite{Ord08}
 
 For my project, the whole of software metrics is too monolithic to employ on
 such a small-scale project. Therefore, I aim to look at a more specific set of measurements,
-namely dealing with style. This approach has been used for C++\cite{Aye98} and C\cite{Tak11}.
+mostly dealing with style. This approach has been used for C++\cite{Aye98} and C\cite{Tak11}.
 \subsection{SOURCE CODE ANALYSIS}
 \cite{Bin07} provides a definition:
 \begin{quote}
@@ -133,8 +133,15 @@ According to \cite{Bin07}, source code analysis has three components: a parser,
 the internal representation, and the analysis of this representation.
 Internal representations are many and varied, including abstract syntax trees,
 control-flow graphs, and call graphs.
-We use the parser of the Standard ML of New Jersey compiler along with the accompanying
-abstract syntax tree that it produces to perform our analyses.
+
+Source code analysis has a variety of applications in such areas as
+automotive software engineering, debugging, fault location, software maintenance,
+etc.\cite{Bin07}
+
+I use the parser of the Standard ML of New Jersey compiler along with the accompanying
+abstract syntax tree that it produces to perform our analyses. My analysis
+consists of static analyses of the abstract syntax tree, looking for
+syntactic constructs and patterns in usage.
 \section{STYLE}\label{sec:style}
 \subsection{Style Guides}\label{subsec:guide}
 If we wish to examine how well expert code conforms to style, we need to decide
@@ -149,29 +156,66 @@ Let's take a look at what we can discover.
 \subsection{Tabs vs. Spaces}
 If one wishes to start a flame war on StackOverflow, one simply needs to start
 a debate over spaces and tabs. The three style guides, nevertheless, are
-united on the view that tabs are taboo in SML code. Perhaps this stems
-from a desire to indent code in order to align the features of different lines
-for maximum readability. Tabs, which are potentially rendered differently for
+united on the view that tabs are taboo in SML code. To paraphrase the CMU
+style guide, white space should emphasize the structure of the code.\cite{Cmu12}
+Tabs, which are potentially rendered differently for
 different users, cannot be used to consistently provide the desired indentation.
 \begin{table}[h!]
+\centering
 \begin{tabular}{|c||c|c||c|}
 \hline
 Project & Tabs & Lines & Lines per instance \\ \hline\hline
-SMLNJ & 0 & 0 & 0 \\
-MLKit & 0 & 0 & 0 \\
-FoxNet & 0 & 0 & 0 \\
-Til & 0 & 0 & 0 \\
-MLton & 0 & 0 & 0 \\ \hline
-\end{tabuler}
+SMLNJ & 43362 & 81124 & 1.87 \\
+MLKit & 329012 & 530334 & 1.61 \\
+FoxNet & 5593 & 8545 & 1.53 \\
+Til & 143103 & 222317 & 1.55 \\
+MLton & 0 & 168323 & -- \\ \hline
+\end{tabular}
+\caption{Occurrences of tab characters in expert code.}
+\label{table:tab}
 \end{table}
-\subsection{The 80-Column Rule}
+
+We can see from Table~\ref{table:tab} that most expert code does
+not conform to the tab/spaces rule. The notable exception is
+the zero occurrences of tabs in MLton, whose style guide we are using.
+It's good to see that the experts at MLton stick to their own guidelines.
+
+So while this rule seems prevalent in the style guides I've looked at,
+the majority of expert ML coders do not conform to this rule.
+\subsection{The 80-Column Rule}\label{subsec:80}
+All three style guides recommend a line of code should not exceed 80 columns.
+The 80-column rule is a UNIX convention and many text editors automatically
+wrap at 80 columns. \cite{Cmu12}
+\begin{table}[h!]
+\centering
+\begin{tabular}{|c||c|c||c|}\hline
+Project & Tabs & Lines & Lines per instance \\ \hline\hline
+SMLNJ & 350 & 81124 & 231.78 \\
+MLKit & 18170 & 530334 & 29.187 \\
+FoxNet & 31 & 8545 & 275.65 \\
+Til & 1380 & 222317 & 161.10 \\
+MLton & 2884 & 168323 & 58.364 \\ \hline
+\end{tabular}
+\caption{Violations of the 80 column rule}
+\label{table:80}
+\end{table}
+
+The example code from the expert ML users I looked at clearly cannot
+resist violating the 80-column rule (Table~\ref{table:80}). A quick glance
+at the violations shows that most of the cases consist of exceeing the limit
+by only a few characters. While most editors can be configured to insert
+spaces in place of tabs, there is no active check on enforcing the 80-column
+rule while coders are working. I suggest here that many of the violations
+simply escaped the notice of their authors. Indeed, MLton contains
+many width violations in spite of what is stated in the style guide.
 \subsection{The Off-Side Rule}
 \subsection{Misuse in Expressions}
 \subsection{Newlines and Grouping}
 \section{SYNTACTIC FORMS}\label{sec:syntax}
 \subsection{Imperative Features}\label{subsec:imper}
 In Prof. Norman Ramsey's class on programming languages at Tufts University, one easy way to lose points
-on any assignment was the unnecessary use \emph{imperative} language features when programming in a \emph{functional} language.\footnote{See, for example: \url{http://www.cs.tufts.edu/comp/105-2013s/homework/scheme.html}, specifically, the section titled ``Dire Warnings''}
+on any assignment was the unnecessary use \emph{imperative} language features when programming in a \emph{functional} language.
+\footnote{See, for example: \url{http://www.cs.tufts.edu/comp/105-2013s/homework/scheme.html}, specifically, the section titled ``Dire Warnings''}
 In Standard ML, there are two main imperative constructs in terms of expressions:
 (1)~the \texttt{while} expression and (2)~a list of expression separated by semicolons (similar to the \texttt{begin...end} syntax of Pascal)\cite{Ull98}.
 The former has the form \texttt{while <boolean-expression> do <expression>} and always returns a value of unit type.
@@ -288,5 +332,6 @@ and conform to it as much as possible. Beginners in ML are encouraged for follow
 \bibitem[Takai et al. 2011]{Tak11} Takai, Y., Kobayashi, T., Agusa, K. (2011) Software Metrics Based on Coding Standards Violations. In \emph{2011 Joint Conference of the 21st Int'l Workshop on Software Measurement and 6th Int'l Conference on Software Process and Product Measurement (IWSM-MENSURA)} Nara, Japan. 273--278. Washington, D.C.: IEEE Computer Society.
 \bibitem[Hughes 90]{Hug90} Hughes, J. (1990) Why Functional Programming MAtters. In D.\,A.\,Turner, ed, \emph{Research Topics in Functional Programming}. Boston, MA: Addison Wesley.
 \bibitem[Peyton Jones, Wadler 1993]{Jon93} Peyton Jones, S.\,L., Wadler, P. (1993) Imperative Functional Programming. In \emph{ACM Symposium on Principles of Programming Languages (POPL'93)}. Charleston, SC. 71--84. New York, NY: ACM.
+\bibitem[CMU 2012]{Cmu12} CMU Computer Science Department. (2012) SML Style Guide. Accessed on 14 Nov 2013 from \url{http://www.cs.cmu.edu/~15150/resources/style.pdf}
 \end{thebibliography}
 \end{document}
