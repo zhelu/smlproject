@@ -71,6 +71,10 @@ signature PARSEFILE = sig
   val filterByLevel : (AstType.dectype * int) Counter.counter -> int ->
                         AstType.dectype Counter.counter
 
+  (* Given a parse tree, find functions where there is potentially an
+   * opportunity for a fold *)
+  val findFoldOpportunity : Ast.dec -> Ast.dec list
+
 end
 
 structure ParseFile :> PARSEFILE = struct
@@ -623,4 +627,49 @@ structure ParseFile :> PARSEFILE = struct
       (map (fn ((x,_),c) => (x,c))
         (L.filter (fn ((_,i),_) => i = level)
           (C.counterToList levelCounter)))
+
+  (* see signature *)
+  fun findFoldOpportunity parseTree =
+    let
+      val fs = findDec [AstType.FUNDEC] parseTree
+      (* given a Ast.FunDec, find all clauses where we are applying the
+       * function to a cons cell. Returns a list of clause * int * string tuple
+       * where the int is the position where we find the cons in the clause
+       * and the string is the name of the cdr *)
+      fun findConsClauses (Ast.FunDec ([Ast.MarkFb (Ast.Fb (cs,_),_)], _)) =
+            let
+              fun getPatsFromClause (Ast.Clause {pats = ps,...}) =
+                map (fn {item = p, region = _, fixity = _} => p) ps
+              fun isPatternCons (Ast.MarkPat (p,_)) = isPatternCons p
+                | isPatternCons
+                    (Ast.FlatAppPat [_,
+                                     { item = Ast.VarPat (cons :: _),
+                                       fixity = _,
+                                       region = _},
+                                     { item = Ast.VarPat (cdr :: _),
+                                       fixity = _,
+                                       region = _}]) =
+                    if Symbol.name cons = "::" then
+                      SOME (Symbol.name cdr)
+                    else NONE
+                | isPatternCons _ = NONE
+            in
+              List.foldl (fn (c,acc) =>
+                let
+                  val pats = getPatsFromClause c
+                  fun findCons _ [] = NONE
+                    | findCons i (p::ps) =
+                        (case isPatternCons p of
+                           SOME n => SOME (c, i, n) 
+                         | NONE => findCons (i + 1) ps)
+                in
+                  (case findCons 0 pats of
+                     SOME tup => tup :: acc
+                   | NONE => acc)
+                end) [] cs
+            end
+        | findConsClauses _ = []
+    in
+      fs
+    end
 end
