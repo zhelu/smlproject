@@ -237,7 +237,7 @@ structure ParseFile :> PARSEFILE = struct
       fun getFirstVarSymbol ({fixity = _,
                               region = _,
                               item = A.MarkPat (A.VarPat s,_)} :: ps) =
-            Symbol.name (hd s)
+            Symbol.name (List.last s)
         | getFirstVarSymbol (_ :: ps) = getFirstVarSymbol ps
         | getFirstVarSymbol _ = let exception Impossible in raise Impossible end
     in
@@ -636,21 +636,21 @@ structure ParseFile :> PARSEFILE = struct
        * function to a cons cell. Returns a list of clause * int * string tuple
        * where the int is the position where we find the cons in the clause
        * and the string is the name of the cdr *)
-      fun findConsClauses (Ast.FunDec ([Ast.MarkFb (Ast.Fb (cs,_),_)], _)) =
+      fun findConsClauses (A.FunDec ([A.MarkFb (A.Fb (cs,_),_)], _)) =
             let
-              fun getPatsFromClause (Ast.Clause {pats = ps,...}) =
+              fun getPatsFromClause (A.Clause {pats = ps,...}) =
                 map (fn {item = p, region = _, fixity = _} => p) ps
-              fun isPatternCons (Ast.MarkPat (p,_)) = isPatternCons p
+              fun isPatternCons (A.MarkPat (p,_)) = isPatternCons p
                 | isPatternCons
-                    (Ast.FlatAppPat [_,
-                                     { item = Ast.VarPat (cons :: _),
-                                       fixity = _,
-                                       region = _},
-                                     { item = Ast.VarPat (cdr :: _),
-                                       fixity = _,
-                                       region = _}]) =
-                    if Symbol.name cons = "::" then
-                      SOME (Symbol.name cdr)
+                    (A.FlatAppPat (_ ::
+                                   {item = A.MarkPat (A.VarPat cons, _),
+                                    fixity = _,
+                                    region = _} ::
+                                   {item = A.MarkPat (A.VarPat cdr, _),
+                                    fixity = _,
+                                    region = _} :: _)) =
+                    if Symbol.name (List.last cons) = "::" then
+                      SOME (Symbol.name (List.last cdr))
                     else NONE
                 | isPatternCons _ = NONE
             in
@@ -669,7 +669,115 @@ structure ParseFile :> PARSEFILE = struct
                 end) [] cs
             end
         | findConsClauses _ = []
+      (* Given a clause, return true if it uses a cons cell as a pattern and
+       * then call itself recursively on the cdr of the cons cell? *)
+      fun isRecursiveOnCdr (c as A.Clause {exp = e, pats = pats,...}, i, n) =
+        let
+          (* Pull the function name from the pattern using fixity *)
+          fun findName ({fixity = SOME (symbol), item = _, region = _} :: ps) =
+                SOME (Symbol.name symbol)
+            | findName ({fixity = NONE,
+                         item = A.MarkPat (A.FlatAppPat ps, _),
+                         region = _} :: _) = findName ps
+            | findName (_ :: ps) = findName ps
+            | findName [] = NONE
+          (* If fixity is defined for any pattern, use first symbol *)
+          fun getFirstVarSymbol ({fixity = _,
+                                  region = _,
+                                  item = A.MarkPat (A.VarPat s,_)} :: ps) =
+                Symbol.name (hd s)
+            | getFirstVarSymbol (_ :: ps) = getFirstVarSymbol ps
+            | getFirstVarSymbol _ =
+                let exception Impossible in raise Impossible end
+          val fName = (case findName pats of
+                         SOME name => name
+                       | NONE => getFirstVarSymbol pats)
+          (* Return true if the ith position the FlatAppExp is a VarExp with
+           * name n *)
+          fun isCdrInPosI i app =
+            let
+              fun getCdrIndex j
+                    (A.FlatAppExp ({item = A.MarkExp (A.VarExp s, _),
+                                    ...} :: rest)) =
+                      if i = j then
+                        Symbol.name (List.last s) = n
+                      else getCdrIndex (j + 1) (A.FlatAppExp rest)
+                | getCdrIndex _ _ = false
+            in
+              if i < 1 then
+                let exception Impossible in raise Impossible end
+              else getCdrIndex 1 app
+            end
+          (* return true if the we have a recursive call to the function on
+           * the cdr (with name n) in the same position as declared *)
+          fun isRecursiveCallOnCdr (A.FlatAppExp ({item = e,...} :: rest)) =
+                (case e of
+                   A.MarkExp (A.VarExp s,_) =>
+                     if Symbol.name (List.last s) = fName then
+                       isCdrInPosI i (A.FlatAppExp rest)
+                     else isRecursiveCallOnCdr (A.FlatAppExp rest)
+                 | _ => isRecursiveCallOnCdr (A.FlatAppExp rest))
+            | isRecursiveCallOnCdr _ = false
+          (* DFS on expr to find subexpressions and apply isRecursiveCallOnCdr
+           * to FlatAppExp's *)
+          fun searchExpr e =
+            (case e of
+               (A.FlatAppExp expFixitems) =>
+                  isRecursiveCallOnCdr e
+                  orelse
+                    L.foldl (fn ({item = e, fixity = _, region = _}, acc) =>
+                               searchExpr e orelse acc)
+                      false expFixitems
+             | (A.SeqExp [exp]) => searchExpr exp
+             | (A.AppExp {function = fexp, argument = arg}) =>
+                  searchExpr fexp orelse searchExpr arg
+             | (A.CaseExp {expr = exp, rules = rules}) =>
+                  let
+                    val acc' = searchExpr exp
+                  in
+                    L.foldl (fn (A.Rule {exp = e,...}, acc) =>
+                                 searchExpr e orelse acc) acc' rules
+                  end
+             | (A.LetExp {expr = exp,...}) => searchExpr exp
+             | (A.SeqExp exps) =>
+                 L.foldl (fn (e, acc) => searchExpr e orelse acc) false exps
+             | (A.RecordExp symbolExpPairs) =>
+                 L.foldl (fn ((_, e), acc) => searchExpr e orelse acc) false
+                   symbolExpPairs
+             | (A.ListExp exps) =>
+                 L.foldl (fn (e, acc) => searchExpr e orelse acc) false exps
+             | (A.TupleExp exps) =>
+                 L.foldl (fn (e, acc) => searchExpr e orelse acc) false exps
+             | (A.ConstraintExp {expr = exp,...}) => searchExpr exp
+             | (A.HandleExp {expr = exp, rules = rules}) =>
+                  let
+                    val acc' = searchExpr exp
+                  in
+                    L.foldl (fn (A.Rule {exp = e,...}, acc) =>
+                               searchExpr e orelse acc) acc' rules
+                  end
+             | (A.RaiseExp exp) => searchExpr exp
+             | (A.IfExp {test = t, thenCase = tt, elseCase = tf}) =>
+                  searchExpr t
+                  orelse searchExpr tt
+                  orelse searchExpr tf
+             | (A.AndalsoExp (e1, e2)) => searchExpr e1 orelse searchExpr e2
+             | (A.OrelseExp (e1, e2)) => searchExpr e1 orelse searchExpr e2
+             | (A.MarkExp (exp,_)) => searchExpr exp
+             | (A.VectorExp exps) =>
+                  L.foldl (fn (e, acc) => searchExpr e orelse acc) false exps
+             | _ => false)
+        in
+          searchExpr e
+        end
     in
+      List.filter
+        (fn f =>
+          let
+            val cs = findConsClauses f
+          in
+            List.foldl (fn (c, acc) => isRecursiveOnCdr c orelse acc) false cs
+          end)
       fs
     end
 end
