@@ -1,6 +1,3 @@
-use "parsefile.sml";
-CM.make "compiler/Basics/basics.cm";
-
 signature VIOLATION = sig
   (* given a filename, create a sourcemap tracking line breaks *)
   val getSourceMap : string -> SourceMap.sourcemap
@@ -12,6 +9,7 @@ signature VIOLATION = sig
   datatype violation = OFFSIDE of { line: int, inside: int }
                      | WIDTH of int
                      | TAB of { line: int, col: int }
+                     | IF of int
 
   (* get a list of width violations from the input source file *)
   val getWidthViolations : string -> violation list
@@ -21,6 +19,9 @@ signature VIOLATION = sig
 
   (* get a list of offside violations from the input source file *)
   val getOffsideViolations : string -> violation list
+
+  (* get a list of if violations from the input source file *)
+  val getIfViolations : string -> violation list
 
   (* given a filename, get a list of all violations *)
   val getViolations : string -> violation list
@@ -32,7 +33,7 @@ structure Violation :> VIOLATION = struct
   datatype violation = OFFSIDE of { line: int, inside: int }
                      | WIDTH of int
                      | TAB of { line: int, col: int }
-
+                     | IF of int
 
   (* see signature *) 
   fun getSourceMap filename =
@@ -280,6 +281,27 @@ structure Violation :> VIOLATION = struct
                  column = 0}
     in
       traverseDecs loc [] sm parseTree
+    end
+
+  (* see signature *)
+  fun getIfViolations filename =
+    let
+      val sm = getSourceMap filename
+      val parseTree = ParseFile.readFile filename
+      val ifExps = ParseFile.findExp [AstType.IFEXP] parseTree
+    in
+      List.foldl
+        (fn (e, acc) =>
+           (case ParseFile.findIfViolation e of
+              SOME pos =>
+                let
+                  val {fileName = _,
+                       line = line,
+                       column = _} = SourceMap.filepos sm pos
+                in
+                  IF line :: acc
+                end
+            | NONE => acc)) [] ifExps
     end
                 
   (* see signature *)

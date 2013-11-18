@@ -1,7 +1,3 @@
-CM.make "compiler/Parse/parser.cm";
-use "asttype.sml";
-use "counter.sml";
-
 signature PARSEFILE = sig
 
   (* readFile filename returns the parse tree resulting from reading the source
@@ -75,6 +71,8 @@ signature PARSEFILE = sig
    * opportunity for a fold *)
   val findFoldOpportunity : Ast.dec -> Ast.dec list
 
+  (* Find all misuses of ifs in an expression, return list of SourceMap.sourcepos *)
+  val findIfViolation : Ast.exp -> int option
 end
 
 structure ParseFile :> PARSEFILE = struct
@@ -771,13 +769,72 @@ structure ParseFile :> PARSEFILE = struct
           searchExpr e
         end
     in
-      List.filter
+      L.filter
         (fn f =>
           let
             val cs = findConsClauses f
           in
-            List.foldl (fn (c, acc) => isRecursiveOnCdr c orelse acc) false cs
+            L.foldl (fn (c, acc) => isRecursiveOnCdr c orelse acc) false cs
           end)
       fs
     end
+
+  (* see signature *)
+  fun findIfViolation (e as A.IfExp {test = test,
+                                       thenCase = thenCase,
+                                       elseCase = elseCase}) =
+        let
+          (* pull expression for redundant expression *)
+          fun getExp (A.MarkExp (e, _)) = getExp e
+            | getExp (A.SeqExp [e]) = getExp e
+            | getExp (A.FlatAppExp [{item = e, ...}]) = getExp e
+            | getExp e = e
+          (* get the name of the symbol *)
+          fun getSymbol s = Symbol.name (L.last s)
+          fun symbolIsBool s = getSymbol s = "true" orelse getSymbol s = "false"
+          fun findMark (A.MarkExp (_, (p, _))) = p -1
+            | findMark (A.FlatAppExp ({item = e,...} :: _)) = findMark e
+            | findMark (A.SeqExp [e]) = findMark e
+            | findMark _ = let exception Impossible in raise Impossible end
+          val pos = findMark thenCase
+        in
+                 (case (getExp test, getExp thenCase, getExp elseCase) of
+                    (A.FlatAppExp [{item = A.MarkExp (A.VarExp testVar, _),...},
+                                   {item = A.MarkExp (A.VarExp _, _),...}], _, _) =>
+                      if getSymbol testVar = "not" then
+                        SOME pos
+                      else NONE
+                  | (A.VarExp tVar, A.VarExp thVar, A.VarExp elVar) =>
+                      if symbolIsBool tVar
+                        orelse symbolIsBool thVar
+                        orelse symbolIsBool elVar then
+                          SOME pos
+                      else NONE
+                  | (_, A.VarExp thVar, A.VarExp elVar) =>
+                      if symbolIsBool thVar orelse symbolIsBool elVar then
+                        SOME pos
+                      else NONE
+                  | (A.VarExp tVar, A.VarExp thVar, _) =>
+                      if symbolIsBool tVar orelse symbolIsBool thVar then
+                          SOME pos
+                      else NONE
+                  | (A.VarExp tVar, _, A.VarExp elVar) =>
+                      if symbolIsBool tVar orelse symbolIsBool elVar then
+                          SOME pos
+                      else NONE
+                  | (_, A.VarExp thVar, _) =>
+                      if symbolIsBool thVar then
+                          SOME pos
+                      else NONE
+                  | (A.VarExp tVar, _, _) =>
+                      if symbolIsBool tVar then
+                        SOME pos
+                      else NONE
+                  | (_, _, A.VarExp elVar) =>
+                      if symbolIsBool elVar then
+                        SOME pos
+                      else NONE
+                  | _ => NONE)
+        end
+    | findIfViolation _ = NONE
 end

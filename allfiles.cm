@@ -1,0 +1,22 @@
+Group
+  signature COUNTER
+  signature ASTTYPE
+  signature PARSEFILE
+  signature VIOLATION
+  signature MANYFILES
+
+  structure Counter
+  structure AstType
+  structure ParseFile
+  structure Violation
+  structure ManyFiles
+is
+  counter.sml
+  asttype.sml
+  parsefile.sml
+  manyfiles.sml
+  violation.sml
+  
+  $/basis.cm
+  $/smlnj-lib.cm
+  $smlnj/compiler.cm

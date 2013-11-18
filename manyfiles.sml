@@ -1,5 +1,3 @@
-use "violation.sml";
-
 signature MANYFILES = sig
   (* given a list of line separated file names,
    * product a list of these names *)
@@ -53,8 +51,18 @@ signature MANYFILES = sig
   (* Given a violation aggregator from the violation structure and a list of
    * files, find all violations of that type in the supplied files, returning
    * a list of pairs of files and their violations *)
-  val getViolationsByFile : (string -> Violation.violation list) -> string list ->
+  val getViolationsByFile : (string -> Violation.violation list) ->
+                              string list ->
                               (string * Violation.violation list) list
+
+  (* Given a list of files, get all potential opportunities to refactor with
+   * fold *)
+  val getFoldOpportunities : string list -> Ast.dec list
+
+  (* Given a list of files, get all potential opportunities to refactor with
+   * fold grouped by file *)
+  val getFoldOpportunitiesByFile : string list -> (string * Ast.dec list) list
+
 end
 
 structure ManyFiles :> MANYFILES = struct
@@ -217,7 +225,40 @@ structure ManyFiles :> MANYFILES = struct
           val vs = parseFile f
         in
           case vs of
-            SOME _ => (f, violationF f) :: acc
+            SOME _ =>
+              let
+                val vs = violationF f
+              in
+                if length vs = 0 then
+                  acc
+                else (f, violationF f) :: acc
+              end
+          | NONE => acc
+        end) [] fileList
+
+  (* see signature *)
+  fun getFoldOpportunities fileList =
+    L.foldl
+      (fn (f, acc) =>
+        let
+          val folds = parseFile f >= ParseFile.findFoldOpportunity
+        in
+          case folds of
+            SOME [] => acc
+          | SOME os => os @ acc
+          | NONE => acc
+        end) [] fileList
+
+  (* see signature *)
+  fun getFoldOpportunitiesByFile fileList =
+    L.foldl
+      (fn (f, acc) =>
+        let
+          val folds = parseFile f >= ParseFile.findFoldOpportunity
+        in
+          case folds of
+            SOME [] => acc
+          | SOME os => (f, os) :: acc
           | NONE => acc
         end) [] fileList
 end

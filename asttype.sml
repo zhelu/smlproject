@@ -1,5 +1,3 @@
-CM.make "compiler/Parse/parser.cm";
-
 signature ASTTYPE = sig
 
   (* algebraic datatype to locally describe the types of declarations *)
