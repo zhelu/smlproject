@@ -1,5 +1,14 @@
 *.pdf
 *.djvu
+*.eps
+*.jgr
+*.txt
+*.gv
 MLKit\ 4.3.7/
 compiler/
+til/
+mlton-master/
+foxnet/
+.cm/
+project.*
 test.sml
