@@ -289,18 +289,56 @@ structure Violation :> VIOLATION = struct
       val sm = getSourceMap filename
       val parseTree = ParseFile.readFile filename
       val ifExps = ParseFile.findExp [AstType.IFEXP] parseTree
+      (* pull expression for redundant expression *)
+      fun getExp (Ast.MarkExp (e, _)) = getExp e
+        | getExp (Ast.SeqExp [e]) = getExp e
+        | getExp (Ast.FlatAppExp [{item = e, ...}]) = getExp e
+        | getExp e = e
+      (* get the name of the symbol *)
+      fun getSymbol s = Symbol.name (List.last s)
+      (* Does the input path list correspond to literal true or false? *)
+      fun symbolIsBool s = getSymbol s = "true" orelse getSymbol s = "false"
+      (* find a MarkExp so we can get a sourceloc out *)
+      fun findMarkPos (Ast.MarkExp (_, (p, _))) = p - 1
+        | findMarkPos (Ast.FlatAppExp ({item = e,...} :: _)) = findMarkPos e
+        | findMarkPos (Ast.SeqExp [e]) = findMarkPos e
+        | findMarkPos _ = let exception Impossible in raise Impossible end
+      (* return a optional int for the position in the file if there is an if
+       * violation *)
+      fun findIfViolation (e as Ast.IfExp {test = test,
+                                           thenCase = thenCase,
+                                           elseCase = elseCase}) =
+            let
+              val {fileName = _,
+                   line = line,
+                   column = _} = SourceMap.filepos sm (findMarkPos thenCase)
+            in
+              (case (getExp test, getExp thenCase, getExp elseCase) of
+                 (Ast.FlatAppExp [{item = Ast.MarkExp (Ast.VarExp testVar, _),...},
+                                {item = Ast.MarkExp (Ast.VarExp _, _),...}], _, _) =>
+                    if getSymbol testVar = "not" then
+                      SOME line
+                    else NONE
+               | (_, Ast.VarExp thVar, Ast.VarExp elVar) =>
+                    if symbolIsBool thVar orelse symbolIsBool elVar then
+                      SOME line
+                    else NONE
+               | (_, Ast.VarExp thVar, _) =>
+                    if symbolIsBool thVar then
+                        SOME line
+                    else NONE
+               | (_, _, Ast.VarExp elVar) =>
+                    if symbolIsBool elVar then
+                      SOME line
+                    else NONE
+               | _ => NONE)
+            end
+        | findIfViolation _ = NONE
     in
       List.foldl
         (fn (e, acc) =>
-           (case ParseFile.findIfViolation e of
-              SOME pos =>
-                let
-                  val {fileName = _,
-                       line = line,
-                       column = _} = SourceMap.filepos sm pos
-                in
-                  IF line :: acc
-                end
+           (case findIfViolation e of
+              SOME line => IF line :: acc
             | NONE => acc)) [] ifExps
     end
                 

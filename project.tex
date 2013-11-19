@@ -80,11 +80,11 @@ in a particular field to become an expert \cite{Gla08}. But if we want to provid
 with specifics during these 10000 hours, what should we tell them? One challenge is that experts themselves
 do not necessarily know what features identify them as experts and what features are unique to them as individuals.
 
-I attempt to shed light onto this project by employing software metrics, by trying to find measureable quantities
+We attempt to shed light onto this project by employing software metrics, by trying to find measureable quantities
 that provide some metric for evaluating software. Specifically,
-I approach this problem by examining source code written by experts.
+We approach this problem by examining source code written by experts.
 
-For samples of expert code, I turned to prominent projects where the source code is readily available:
+For samples of expert code, we turned to prominent projects where the source code is readily available:
 \begin{enumerate}
 \item The Standard ML of New Jersey compiler (SMLNJ),\footnote{\url{http://smlnj.cs.uchicago.edu/dist/working/110.76/compiler.tgz}} whose parser was used extensively for code analysis in this project
 \item The MLKit compiler for SML\footnote{\url{http://www.itu.dk/research/mlkit/dist/mlkit-4.3.0-src.tgz}}
@@ -96,11 +96,11 @@ For samples of expert code, I turned to prominent projects where the source code
 The layout of this paper is as follow.
 Section~\ref{sec:metric} provides a very brief background
 concerning software metrics and source code analysis.
-I look at how well expert code conforms to readily available
+We look at how well expert code conforms to readily available
 style guides in section~\ref{sec:style}.
 Section~\ref{sec:syntax} discusses an analysis
 of the distribution of syntactic forms. The implementation is discussed
-in section~\ref{sec:impl}. Finally, I conclude and reflect in section~\ref{sec:future}.
+in section~\ref{sec:impl}. Finally, we conclude and reflect in section~\ref{sec:future}.
 \section{SOFTWARE METRICS AND SOURCE CODE ANALYSIS}\label{sec:metric}
 \subsection{SOFTWARE METRICS}
 One way to tackle the challenges and complexities of software development is to employ
@@ -115,7 +115,7 @@ a growing number of organizations have integrated software measurement programs 
 their workflows.\cite{Ord08}
 
 For my project, the whole of software metrics is too monolithic to employ on
-such a small-scale project. Therefore, I aim to look at a more specific set of measurements,
+such a small-scale project. Therefore, we aim to look at a more specific set of measurements,
 mostly dealing with style. This approach has been used for C++\cite{Aye98} and C\cite{Tak11}.
 \subsection{SOURCE CODE ANALYSIS}
 \cite{Bin07} provides a definition:
@@ -138,7 +138,7 @@ Source code analysis has a variety of applications in such areas as
 automotive software engineering, debugging, fault location, software maintenance,
 etc.\cite{Bin07}
 
-I use the parser of the Standard ML of New Jersey compiler along with the accompanying
+We use the parser of the Standard ML of New Jersey compiler along with the accompanying
 abstract syntax tree that it produces to perform our analyses. My analysis
 consists of static analyses of the abstract syntax tree, looking for
 syntactic constructs and patterns in usage.
@@ -180,7 +180,7 @@ not conform to the tab/spaces rule. The notable exception is
 the zero occurrences of tabs in MLton, whose style guide we are using.
 It's good to see that the experts at MLton stick to their own guidelines.
 
-So while this rule seems prevalent in the style guides I've looked at,
+So while this rule seems prevalent in the style guides we've looked at,
 the majority of expert ML coders do not conform to this rule.
 \subsection{The 80-Column Rule}\label{subsec:80}
 All three style guides recommend a line of code should not exceed 80 columns.
@@ -200,15 +200,43 @@ MLton & 2884 & 168323 & 58.364 \\ \hline
 \label{table:80}
 \end{table}
 
-The example code from the expert ML users I looked at clearly cannot
+The example code from the expert ML users we looked at clearly cannot
 resist violating the 80-column rule (Table~\ref{table:80}). A quick glance
 at the violations shows that most of the cases consist of exceeing the limit
 by only a few characters. While most editors can be configured to insert
 spaces in place of tabs, there is no active check on enforcing the 80-column
-rule while coders are working. I suggest here that many of the violations
+rule while coders are working. We suggest here that many of the violations
 simply escaped the notice of their authors. Indeed, MLton contains
 many width violations in spite of what is stated in the style guide.
-\subsection{Misuse in Expressions}
+\subsection{Verbosity in If Expressions}
+A convention cited in the Cornell style guide is that we should use \texttt{if}
+expressions wisely. There are two specific uses of \texttt{if} that we
+chose as violations.
+\begin{enumerate}
+\item Either one or both of the branches are boolean literals. We can rewrite the if expression with judicious use of \texttt{not}, \texttt{orelse}, and \texttt{andalso}
+\item The test consists of \texttt{not} applied to another literal. We should just swap the two branches of the conditional.
+\end{enumerate}
+Rewriting these cases should help to improve readability and reduce verbosity in the code.
+
+\begin{table}[h!]
+\centering
+\begin{tabular}{|c||c|c||c|}\hline
+Project & \texttt{if} violations & Lines & Lines per instance \\ \hline\hline
+SMLNJ & 25 & 81124 & 3245.0 \\
+MLKit & 182 & 530334 & 2913.9 \\
+FoxNet & 0 & 8545 & -- \\
+Til & 149 & 222317 & 1492.1 \\
+MLton & 72 & 168323 & 2337.8 \\ \hline
+\end{tabular}
+\caption{Selected misuse of \texttt{if} (see text)}
+\label{table:if}
+\end{table}
+
+Table~\ref{table:if} shows the frequency of \texttt{if} violations in the five projects we selected.
+On inspection, the violations tend to fall into two groups: the first comprised of
+missed opportunities to rewrite the \texttt{if} statement in potentially simpler way; the second
+made up of complicated \texttt{if} expressions where rewriting may not improve readability at all.
+
 \subsection{Newlines and Grouping}
 \section{SYNTACTIC FORMS}\label{sec:syntax}
 \subsection{Imperative Features}\label{subsec:imper}
@@ -260,12 +288,12 @@ to avoid the use of mutable variables altogether.
 
 Overall, we can observe that there are very few usages of \texttt{while} expressions
 in expert projects (on average, one occurrence per about 2000 lines of code).
-When code used for testing is excluded from the analysis, I found only one use
+When code used for testing is excluded from the analysis, we found only one use
 of a \texttt{while} expression which was used to modify mutable data.
 From the analysis, expert ML programmers seemed quite principled in avoiding imperative
 elements of ML. This is perhaps not surprising since they could have chosen
 to implement in any language but selected a functional language in the end.
-I therefore recommend that beginners avoid using \texttt{while} loops completely.
+We therefore recommend that beginners avoid using \texttt{while} loops completely.
 \subsubsection{Expression List}
 \begin{table}[h!]
 \centering
@@ -312,7 +340,7 @@ be made adequately efficient unless we are allowed to change some value bindings
 
 Imperative features are clearly unavoidable as evidenced in expert ML code. The experts do
 limit their uses of expression lists to a few general cases, mostly dominated by I/O.
-I conclude that the ML experts believe in the ``functional, side-effect-free'' style
+We conclude that the ML experts believe in the ``functional, side-effect-free'' style
 and conform to it as much as possible. Beginners in ML are encouraged for follow their example.
 \subsection{Common Library Functions}\label{subsec:imp}
 \subsection{User-Defined Functions}\label{subsec:userfun}
