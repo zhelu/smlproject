@@ -10,6 +10,7 @@ signature VIOLATION = sig
                      | WIDTH of int
                      | TAB of { line: int, col: int }
                      | IF of int
+                     | FOLD of int
 
   (* get a list of width violations from the input source file *)
   val getWidthViolations : string -> violation list
@@ -23,6 +24,9 @@ signature VIOLATION = sig
   (* get a list of if violations from the input source file *)
   val getIfViolations : string -> violation list
 
+  (* get a list of fold violations from the input source file *)
+  val getFoldViolations : string -> violation list
+
   (* given a filename, get a list of all violations *)
   val getViolations : string -> violation list
 
@@ -34,6 +38,7 @@ structure Violation :> VIOLATION = struct
                      | WIDTH of int
                      | TAB of { line: int, col: int }
                      | IF of int
+                     | FOLD of int
 
   (* see signature *) 
   fun getSourceMap filename =
@@ -272,6 +277,7 @@ structure Violation :> VIOLATION = struct
   val _ = op traverseDecs : SourceMap.sourceloc -> violation list ->
                             SourceMap.sourcemap -> Ast.dec -> violation list
 
+  (* see signature *)
   fun getOffsideViolations filename =
     let
       val sm = getSourceMap filename
@@ -341,14 +347,35 @@ structure Violation :> VIOLATION = struct
               SOME line => IF line :: acc
             | NONE => acc)) [] ifExps
     end
+
+  (* see signature *)
+  fun getFoldViolations filename =
+    let
+      val parseTree = ParseFile.readFile filename
+      val sm = getSourceMap filename
+      fun getLine (Ast.FunDec (Ast.MarkFb (_, (p,_)) :: _, _)) =
+        let
+          val {fileName = _,
+               line = line,
+               column = _} = SourceMap.filepos sm (p - 1)
+        in
+          line
+        end
+      val vs = ParseFile.findFoldOpportunity parseTree
+    in
+      map (FOLD o getLine) vs
+    end
                 
   (* see signature *)
   fun getViolations filename =
     let
       val width = getWidthViolations filename
       val tab = getTabViolations filename
+      val ifs = getIfViolations filename
+      val offside = getOffsideViolations filename
+      val folds = getFoldViolations filename
     in
-      width @ tab
+      width @ tab @ ifs @ offside @ folds
     end
 
 end

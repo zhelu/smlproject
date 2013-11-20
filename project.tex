@@ -61,7 +61,7 @@
 \renewcommand*{\thefootnote}{\arabic{footnote}}
 
 \title{Identifying Patterns in Expert ML Code\footnote{Pun intended}}
-\subtitle{Comp150FP Final Project\footnote{Submitted in partial fulfillment of the requirements for M.S. in computer science}}
+\subtitle{Comp150FP Final Project\footnote{This project, advised by Prof. Norman Ramsey, is also submitted in partial fulfillment of the requirements for M.S. in computer science}}
 \author{Zhe Lu}
 \date{10 December 2013}
 
@@ -114,7 +114,7 @@ Nevertheless, due to the high level of potential utility from prudent measuremen
 a growing number of organizations have integrated software measurement programs into
 their workflows.\cite{Ord08}
 
-For my project, the whole of software metrics is too monolithic to employ on
+For our project, the whole of software metrics is too monolithic to employ on
 such a small-scale project. Therefore, we aim to look at a more specific set of measurements,
 mostly dealing with style. This approach has been used for C++\cite{Aye98} and C\cite{Tak11}.
 \subsection{SOURCE CODE ANALYSIS}
@@ -139,7 +139,7 @@ automotive software engineering, debugging, fault location, software maintenance
 etc.\cite{Bin07}
 
 We use the parser of the Standard ML of New Jersey compiler along with the accompanying
-abstract syntax tree that it produces to perform our analyses. My analysis
+abstract syntax tree that it produces to perform our analyses. Our analysis
 consists of static analyses of the abstract syntax tree, looking for
 syntactic constructs and patterns in usage.
 \section{STYLE}\label{sec:style}
@@ -233,14 +233,48 @@ MLton & 72 & 168323 & 2337.8 \\ \hline
 \end{table}
 
 Table~\ref{table:if} shows the frequency of \texttt{if} violations in the five projects we selected.
-On inspection, the violations tend to fall into two groups: the first comprised of
-missed opportunities to rewrite the \texttt{if} statement in potentially simpler way; the second
-made up of complicated \texttt{if} expressions where rewriting may not improve readability at all.
+There do not seem to be many violations -- on average approximately one every couple of thousand lines --
+but they do still occur.
+On inspection, the violations tend to fall into two groups: most are
+missed opportunities to rewrite the \texttt{if} statement in potentially simpler way; 
+a few are made up of complicated \texttt{if} expressions where rewriting may not improve readability at all.
+The first example below shows a \texttt{if} expression that could be rewritten as \texttt{e = t orelse f r}.
+In the second case, the use of \texttt{orelse} does not significantly improve the readability or conciseness
+of the expression. The problem is that the \texttt{if} expression has the same value as the test expression,
+but if it evaluates to \texttt{false}, we also wish to evaluate some code for side-effects.
 
-\subsection{Newlines and Grouping}
+\begin{figure}[h!]
+\begin{enumerate}
+\item \texttt{if e = t then true else f r}
+\item \texttt{if ar1 = ar2 then true else (}$\langle$\emph{code with side-effects}$\rangle$\texttt{; false)}
+\end{enumerate}
+\caption{Two \texttt{if} expressions from expert code where the \texttt{then} branch is the value \texttt{true}. In example 1, we could
+rewrite in a more concise way by using \texttt{orelse}. In example 2, the use of \texttt{orelse} does not help much.}
+\label{figure:ifthentrue}
+\end{figure}
+
+The expert code contains many uses of \texttt{orelse} and \texttt{andalso}, so we are forced to
+conclude that the coders either missed an opportunity to use those syntactic constructs or chose
+not to do so. But when we see in SMLNJ, MLKit, and Til an expression of the form:
+\[\texttt{if }\langle expression\rangle\texttt{ then true else false}\]
+we cannot help but wonder if it not just the former scenario. Despite the existence of
+our selected \texttt{if} violations in expert code, we
+recommend that beginners avoid verbosity in their \texttt{if} expressions by writing them
+in more concise forms.
+\section{Fold}\label{subsec:fold}
+The Cornell and CMU style guides both suggest making heaving use of library functions.
+The author has noted in discussions with the course staff for a programming languages course
+that library functions for lists were frequent missed opportunities. We
+chose to look at the \texttt{List} structure from the basis. Since many of the functions
+from this structure, for example, \texttt{map}, \texttt{exists}, \texttt{all}, \texttt{filter},
+and \texttt{rev}, can be written in terms of a fold over a list, we decided to look
+for missed opportunities to apply a fold. \cite{Jeu13} describes an algorithm for turning
+explicitly recursive functions into folds. We chose not to tackle the more challenging
+problem of finding all fold opportunities or transforming them,
+but instead chose to look for a specific subset where folds might be applied.
 \section{SYNTACTIC FORMS}\label{sec:syntax}
 \subsection{Imperative Features}\label{subsec:imper}
-In Prof. Norman Ramsey's class on programming languages at Tufts University, one easy way to lose points
+In Prof. Norman Ramsey's class on programming languages, one easy way to lose points
 on any assignment was the unnecessary use \emph{imperative} language features when programming in a \emph{functional} language.
 \footnote{See, for example: \url{http://www.cs.tufts.edu/comp/105-2013s/homework/scheme.html}, specifically, the section titled ``Dire Warnings''}
 In Standard ML, there are two main imperative constructs in terms of expressions:
@@ -264,7 +298,7 @@ Project & \multicolumn{2}{c||}{Instances of \texttt{while}} & Lines & \multicolu
 SMLNJ & 0 & 0 & 81124 & -- & --\\ 
 MLKit & 18 & 0 & 530334 & 29463 & --\\
 FoxNet & 0 & 0 & 8545 & -- & -- \\
-Til & 104 & 1 & 222317 & 2137.66 & 222317 \\
+Til & 104 & 2 & 222317 & 2137.66 & 11158.5 \\
 MLton & 20 & 0 & 168323 & 8416.15 & --\\ \hline
 \end{tabular}
 \caption{Occurrences of \texttt{while} expressions}
@@ -279,12 +313,10 @@ The 20 occurrences of \texttt{while} expressions in MLton are likewise found in 
 also in MLton's benchmarks suite.
 
 Of the 104 instances of a \texttt{while} expression in the Til project,
-only 1 of these was found outside of a source file used for regression or benchmark testing.
-This singleton appears to be used to ``touch''
-structures in order to ``drag in'' other needed structures.\footnote{This analysis is roughly gleamed from limited comments in the source code.}
-The body of the while loop includes modifying a mutable reference, which justifies the use of
-an imperative feature. Nevertheless, it is unclear whether we might be able to rewrite the code
-to avoid the use of mutable variables altogether.
+only 2 of these were found outside of a source file used for regression or benchmark testing.
+In both instances, the body of the while loop includes modifying a mutable reference, which justifies the use of
+an imperative feature. Getting rid of the while loops requires a design of how the code works so
+that we no longer need to keep track of mutable state and thus, is not very straightforward.
 
 Overall, we can observe that there are very few usages of \texttt{while} expressions
 in expert projects (on average, one occurrence per about 2000 lines of code).
@@ -343,7 +375,6 @@ limit their uses of expression lists to a few general cases, mostly dominated by
 We conclude that the ML experts believe in the ``functional, side-effect-free'' style
 and conform to it as much as possible. Beginners in ML are encouraged for follow their example.
 \subsection{Common Library Functions}\label{subsec:imp}
-\subsection{User-Defined Functions}\label{subsec:userfun}
 \subsection{Program Structure}\label{subsec:struct}
 \section{IMPLEMENTATION}\label{sec:impl}
 \section{CONCLUSIONS AND FUTURE WORK}\label{sec:future}
@@ -360,5 +391,6 @@ and conform to it as much as possible. Beginners in ML are encouraged for follow
 \bibitem[Hughes 90]{Hug90} Hughes, J. (1990) Why Functional Programming MAtters. In D.\,A.\,Turner, ed, \emph{Research Topics in Functional Programming}. Boston, MA: Addison Wesley.
 \bibitem[Peyton Jones, Wadler 1993]{Jon93} Peyton Jones, S.\,L., Wadler, P. (1993) Imperative Functional Programming. In \emph{ACM Symposium on Principles of Programming Languages (POPL'93)}. Charleston, SC. 71--84. New York, NY: ACM.
 \bibitem[CMU 2012]{Cmu12} CMU Computer Science Department. (2012) SML Style Guide. Accessed on 14 Nov 2013 from \url{http://www.cs.cmu.edu/~15150/resources/style.pdf}
+\bibitem[Van der Jeugt et al. 2013]{Jeu13} Van der Jeugt, J., Keuchel, S., Schrijvers, T. (2013) Bringing Functions into the Fold. Unpublished manuscript.
 \end{thebibliography}
 \end{document}
