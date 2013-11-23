@@ -8,7 +8,7 @@ signature VIOLATION = sig
    * (or) a violation where we've exceeded the maximum width at a line *)
   datatype violation = OFFSIDE of { line: int, inside: int }
                      | WIDTH of int
-                     | TAB of { line: int, col: int }
+                     | TAB of int
                      | IF of int
                      | FOLD of int
 
@@ -36,7 +36,7 @@ structure Violation :> VIOLATION = struct
 
   datatype violation = OFFSIDE of { line: int, inside: int }
                      | WIDTH of int
-                     | TAB of { line: int, col: int }
+                     | TAB of int
                      | IF of int
                      | FOLD of int
 
@@ -89,12 +89,14 @@ structure Violation :> VIOLATION = struct
               let
                 val sourcepos = SourceMap.filepos sourcemap p
               in
-                TAB {line = #line(sourcepos),
-                     col = #column(sourcepos)} :: loop (p + 1)
+                TAB (#line(sourcepos)) :: loop (p + 1)
               end
             else loop (p + 1)
     in
-      loop 1 before TextIO.closeIn instrm
+      List.foldr
+        (fn (a, acc) => case List.find (fn x => x = a) acc of
+                          SOME _ => acc
+                        | NONE => a :: acc) [] (loop 1) before TextIO.closeIn instrm
     end
 
   (* traverseDecs takes a fileloc parameter, a

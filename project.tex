@@ -60,7 +60,7 @@
 %\renewcommand*\arraystretch{1.1}
 \renewcommand*{\thefootnote}{\arabic{footnote}}
 
-\title{Identifying Patterns in Expert ML Code\footnote{Pun intended}}
+\title{Code Like a Pro:\\Observations on Expert ML Code}
 \subtitle{Comp150FP Final Project\footnote{This project, advised by Prof. Norman Ramsey, is also submitted in partial fulfillment of the requirements for M.S. in computer science}}
 \author{Zhe Lu}
 \date{10 December 2013}
@@ -94,7 +94,7 @@ For samples of expert code, we turned to prominent projects where the source cod
 \end{enumerate}
 
 The layout of this paper is as follow.
-Section~\ref{sec:metric} provides a very brief background
+Section~\ref{sec:metric} provides a brief background
 concerning software metrics and source code analysis.
 We look at how well expert code conforms to readily available
 style guides in section~\ref{sec:style}.
@@ -160,54 +160,52 @@ united on the view that tabs are taboo in SML code. To paraphrase the CMU
 style guide, white space should emphasize the structure of the code.\cite{Cmu12}
 Tabs, which are potentially rendered differently for
 different users, cannot be used to consistently provide the desired indentation.
-\begin{table}[h!]
-\centering
-\begin{tabular}{|c||c|c|}
-\hline
-Project & Tabs & Lines per instance \\ \hline\hline
-SML/NJ & 43362 & 1.87 \\
-MLKit & 329012 & 1.61 \\
-FoxNet & 5593 & 1.53 \\
-Til & 143103 & 1.55 \\
-MLton & 0 & -- \\ \hline
-\end{tabular}
-\caption{Occurrences of tab characters in expert code.}
-\label{table:tab}
-\end{table}
+For some users, this ability to customize the size of tabs is an asset not
+a drawback.
 
-We can see from Table~\ref{table:tab} that most expert code does
-not conform to the tab/spaces rule. The notable exception is
-the zero occurrences of tabs in MLton, whose style guide we are using.
-It's good to see that the experts at MLton stick to their own guidelines.
+We can see from Table~\ref{table:whitespace} that most expert code definitely does
+not conform to the tab/spaces rule -- we see a tab character approximately once every third line.
+It seems that the coders made a decision to use tabs and stuck to the decision fairly well.
+The notable exception is complete lack of tabs in MLton, whose style guide we are using as an example.
+It's good to see that the principled experts at MLton stick to their own guidelines.
 But based on the fiery nature of the debate over the proper character
 for indenting, perhaps it is not surprising that the tab/spaces
 rule from style guides is adopted by only a select group of coders.
+While we can't say that the experts choose one style over the other in accordance with
+any style guide, we can say that the experts are at least consistent, which is
+a potentially helpful observation we can pass on to beginner coders.
 \subsection{The 80-Column Rule}\label{subsec:80}
 All three style guides recommend a line of code should not exceed 80 columns.
 The 80-column rule is a UNIX convention and many text editors automatically
 wrap at 80 columns. \cite{Cmu12}
-\begin{table}[h!]
+
+\begin{table}[t!]
 \centering
-\begin{tabular}{|c||c|c|}\hline
-Project & Tabs & Lines per instance \\ \hline\hline
-SML/NJ & 350 & 231.78 \\
-MLKit & 18170 & 29.187 \\
-FoxNet & 31 & 275.65 \\
-Til & 1380 & 161.10 \\
-MLton & 2884 & 58.364 \\ \hline
+\begin{tabular}{|c||c|c||c|c|}
+\hline
+Project & Tab violations & Lines per instance & Column violations & Lines per instance \\ \hline\hline
+SML/NJ & 23115 & 3.5096 & 350 & 231.78 \\
+MLKit & 184554 & 2.8736 & 18170 & 29.187 \\
+FoxNet & 2861 & 2.9867 & 31 & 275.65 \\
+Til & 78494 & 2.8323 & 1380 & 161.10 \\
+MLton & 0 & -- & 2884 & 58.364 \\ \hline
 \end{tabular}
-\caption{Violations of the 80 column rule}
-\label{table:80}
+\caption{Style violations involving whitespace}
+\label{table:whitespace}
 \end{table}
 
 The example code from the expert ML users we looked at clearly cannot
-resist violating the 80-column rule (Table~\ref{table:80}). A quick glance
+resist violating the 80-column rule (Table~\ref{table:whitespace}), with
+those for MLKit being particularly egregious. A quick glance
 at the violations shows that most of the cases consist of exceeing the limit
 by only a few characters. While most editors can be configured to insert
 spaces in place of tabs, there is no active check on enforcing the 80-column
 rule while coders are working.
 Indeed, MLton contains many width violations in spite of what is stated in the style guide.
-\subsection{Verbosity in If Expressions}
+Since the level of indentation does more to highlight the structure of code than
+limiting the width of text does, it is perhaps not surprising that more
+emphasis was placed on eliminating tabs than on observing the 80-column rule.
+\subsection{Verbosity in \texttt{if} Expressions}
 A convention cited in the Cornell style guide is that we should use \texttt{if}
 expressions wisely. There are two specific uses of \texttt{if} that we
 chose as violations.
@@ -217,21 +215,7 @@ chose as violations.
 \end{enumerate}
 Rewriting these cases should help to improve readability and reduce verbosity in the code.
 
-\begin{table}[h!]
-\centering
-\begin{tabular}{|c||c|c|}\hline
-Project & \texttt{if} violations & Lines per instance \\ \hline\hline
-SML/NJ & 25 & 3245.0 \\
-MLKit & 182 & 2913.9 \\
-FoxNet & 0 & -- \\
-Til & 149 & 1492.1 \\
-MLton & 72 & 2337.8 \\ \hline
-\end{tabular}
-\caption{Selected misuse of \texttt{if} (see text)}
-\label{table:if}
-\end{table}
-
-Table~\ref{table:if} shows the frequency of \texttt{if} violations in the five projects we selected.
+Table~\ref{table:style} shows the frequency of \texttt{if} violations in the five projects we selected.
 There do not seem to be many violations -- on average approximately one every couple of thousand lines --
 but they do still occur.
 On inspection, the violations tend to fall into two groups: most are
@@ -280,6 +264,28 @@ find instances of the following form:
 where $e$ has the subexpression \texttt{f }\(v_{1}\ldots v_{i-1}\)\texttt{ xs }\(v_{i+1}\ldots v_{n}\)
 \end{center}
 That is, we're explicitly calling a recursive function on the tail of a input list.
+The only other restriction is that the only list literal we allow in the same position
+a declared pattern is the empty list literal (\texttt{[]}). This prevents idiosyncratic
+behavior from being introduced into an otherwise sound definition by structural induction.
+We won't concern ourselves with the order of the pattern match because either the patterns
+are mutually exclusive (e.g., \texttt{[]} or a cons cell) or there is a redundant match
+and the compiler will throw an error.
+
+\begin{table}[h!]
+\centering
+\begin{tabular}{|c||c|c||c|c|}\hline
+Project & \texttt{if} violations & Lines per instance & Missed fold opportunities & Lines per instance \\ \hline\hline
+SML/NJ & 25 & 3245.0 & 75 & 1081.7 \\
+MLKit & 182 & 2913.9 & 1470 & 360.77 \\
+FoxNet & 0 & -- & 10 & 854.50 \\
+Til & 149 & 1492.1 & 751 & 296.03 \\
+MLton & 72 & 2337.8 & 202 & 833.28 \\ \hline
+\end{tabular}
+\caption{Selected usage style violations (see text)}
+\label{table:style}
+\end{table}
+
+
 \section{SYNTACTIC FORMS}\label{sec:syntax}
 \subsection{Imperative Features}\label{subsec:imper}
 In Prof. Norman Ramsey's class on programming languages, one easy way to lose points
@@ -334,7 +340,7 @@ From the analysis, expert ML programmers seemed quite principled in avoiding imp
 elements of ML. This is perhaps not surprising since they could have chosen
 to implement in any language but selected a functional language in the end.
 We therefore recommend that beginners avoid using \texttt{while} loops completely.
-\subsubsection{Expression List}
+\subsubsection{Expression Lists}
 \begin{table}[h!]
 \centering
 \begin{tabular}{|c||c|c|}
@@ -346,7 +352,7 @@ FoxNet & 77 & 111.0 \\
 Til & 4414 & 50.37 \\
 MLton & 1907 & 88.27 \\ \hline
 \end{tabular}
-\caption{Occurrences of \texttt{while} expressions}
+\caption{Occurrences of expressions lists}
 \label{table:explist}
 \end{table}
 Table~\ref{table:explist} shows how often expression lists are used in our

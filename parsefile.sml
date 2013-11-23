@@ -465,6 +465,7 @@ structure ParseFile :> PARSEFILE = struct
               if n = "" then getVarName (A.VarExp ss) sym
               else getVarName (A.VarExp ss) (n ^ "." ^ sym)
             end
+        | getVarName _ _ = let exception Bug in raise Bug end
     in
       map (fn x => getVarName x "") vars
     end
@@ -701,7 +702,7 @@ structure ParseFile :> PARSEFILE = struct
                 | getCdrIndex _ _ = false
             in
               if i < 1 then
-                let exception Impossible in raise Impossible end
+                false
               else getCdrIndex 1 app
             end
           (* return true if the we have a recursive call to the function on
@@ -764,15 +765,33 @@ structure ParseFile :> PARSEFILE = struct
                   L.foldl (fn (e, acc) => searchExpr e orelse acc) false exps
              | _ => false)
         in
-          searchExpr e
+          if searchExpr e then SOME i else NONE
         end
+      (* check that the ith position is either null or while or some other var *)
+      fun isIthWildOrNull i [] = true
+        | isIthWildOrNull i (A.Clause {pats = ps,...} :: rest) =
+            let
+              val pats = map (fn {item = p, fixity = _, region = _} => p) ps
+            in
+              (case List.nth (pats, i) of
+                 A.MarkPat (A.ListPat [], _) => isIthWildOrNull i rest
+               | A.MarkPat (A.ListPat _, _) => false
+               | _ => isIthWildOrNull i rest)
+            end
     in
       L.filter
         (fn f =>
           let
             val cs = findConsClauses f
+            val (A.FunDec ((A.MarkFb (A.Fb (allClauses,_),_)) :: _, _)) = f
           in
-            L.foldl (fn (c, acc) => isRecursiveOnCdr c orelse acc) false cs
+            (case L.foldl
+              (fn (c, acc) =>
+                (case isRecursiveOnCdr c of
+                   SOME i => SOME i
+                 | NONE => acc)) NONE cs of
+              SOME i => isIthWildOrNull i allClauses
+            | NONE => false)
           end)
       fs
     end
