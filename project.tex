@@ -86,11 +86,11 @@ We approach this problem by examining source code written by experts.
 
 For samples of expert code, we turned to prominent projects where the source code is readily available:
 \begin{enumerate}
-\item The Standard ML of New Jersey compiler (SMLNJ),\footnote{\url{http://smlnj.cs.uchicago.edu/dist/working/110.76/compiler.tgz}} whose parser was used extensively for code analysis in this project
-\item The MLKit compiler for SML\footnote{\url{http://www.itu.dk/research/mlkit/dist/mlkit-4.3.0-src.tgz}}
-\item FoxNet, an implementation of the standard TCP/IP networking protocol stack in SML\footnote{\url{ftp://ftp.cs.cmu.edu/project/fox/snapshot/foxnet.tar.gz}}
-\item Til, a type-directed compiler for ML\footnote{\url{http://www.cs.cornell.edu/Info/People/jgm/til.tar.Z}}
-\item MLton, an open-source, whole-program, optimizing SML compiler\footnote{\url{http://sourceforge.net/projects/mlton/files/mlton/20130715/mlton-20130715.src.tgz/download}}
+\item The Standard ML of New Jersey compiler (SML/NJ),\footnote{\url{http://smlnj.cs.uchicago.edu/dist/working/110.76/compiler.tgz}} whose parser was used extensively for code analysis in this project (81124 lines of parseable code)
+\item The MLKit compiler for SML\footnote{\url{http://www.itu.dk/research/mlkit/dist/mlkit-4.3.0-src.tgz}} (530334 lines of parseable code)
+\item FoxNet, an implementation of the standard TCP/IP networking protocol stack in SML\footnote{\url{ftp://ftp.cs.cmu.edu/project/fox/snapshot/foxnet.tar.gz}} (8545 lines of parseable code)
+\item Til, a type-directed compiler for ML\footnote{\url{http://www.cs.cornell.edu/Info/People/jgm/til.tar.Z}} (222317 lines of parseable code)
+\item MLton, an open-source, whole-program, optimizing SML compiler\footnote{\url{http://sourceforge.net/projects/mlton/files/mlton/20130715/mlton-20130715.src.tgz/download}} (168323 lines of parseable code)
 \end{enumerate}
 
 The layout of this paper is as follow.
@@ -153,7 +153,7 @@ we will distill a few points of style to examine in the expert code:
 \item Syntactic Conventions, from MLton website\footnote{\url{http://mlton.org/SyntacticConventions}}
 \end{enumerate}
 Let's take a look at what we can discover.
-\subsection{Tabs vs. Spaces}
+\subsection{Tabs vs. Spaces}\label{subsec:tab}
 If one wishes to start a flame war on StackOverflow, one simply needs to start
 a debate over spaces and tabs. The three style guides, nevertheless, are
 united on the view that tabs are taboo in SML code. To paraphrase the CMU
@@ -162,14 +162,14 @@ Tabs, which are potentially rendered differently for
 different users, cannot be used to consistently provide the desired indentation.
 \begin{table}[h!]
 \centering
-\begin{tabular}{|c||c|c||c|}
+\begin{tabular}{|c||c|c|}
 \hline
-Project & Tabs & Lines & Lines per instance \\ \hline\hline
-SMLNJ & 43362 & 81124 & 1.87 \\
-MLKit & 329012 & 530334 & 1.61 \\
-FoxNet & 5593 & 8545 & 1.53 \\
-Til & 143103 & 222317 & 1.55 \\
-MLton & 0 & 168323 & -- \\ \hline
+Project & Tabs & Lines per instance \\ \hline\hline
+SML/NJ & 43362 & 1.87 \\
+MLKit & 329012 & 1.61 \\
+FoxNet & 5593 & 1.53 \\
+Til & 143103 & 1.55 \\
+MLton & 0 & -- \\ \hline
 \end{tabular}
 \caption{Occurrences of tab characters in expert code.}
 \label{table:tab}
@@ -179,22 +179,22 @@ We can see from Table~\ref{table:tab} that most expert code does
 not conform to the tab/spaces rule. The notable exception is
 the zero occurrences of tabs in MLton, whose style guide we are using.
 It's good to see that the experts at MLton stick to their own guidelines.
-
-So while this rule seems prevalent in the style guides we've looked at,
-the majority of expert ML coders do not conform to this rule.
+But based on the fiery nature of the debate over the proper character
+for indenting, perhaps it is not surprising that the tab/spaces
+rule from style guides is adopted by only a select group of coders.
 \subsection{The 80-Column Rule}\label{subsec:80}
 All three style guides recommend a line of code should not exceed 80 columns.
 The 80-column rule is a UNIX convention and many text editors automatically
 wrap at 80 columns. \cite{Cmu12}
 \begin{table}[h!]
 \centering
-\begin{tabular}{|c||c|c||c|}\hline
-Project & Tabs & Lines & Lines per instance \\ \hline\hline
-SMLNJ & 350 & 81124 & 231.78 \\
-MLKit & 18170 & 530334 & 29.187 \\
-FoxNet & 31 & 8545 & 275.65 \\
-Til & 1380 & 222317 & 161.10 \\
-MLton & 2884 & 168323 & 58.364 \\ \hline
+\begin{tabular}{|c||c|c|}\hline
+Project & Tabs & Lines per instance \\ \hline\hline
+SML/NJ & 350 & 231.78 \\
+MLKit & 18170 & 29.187 \\
+FoxNet & 31 & 275.65 \\
+Til & 1380 & 161.10 \\
+MLton & 2884 & 58.364 \\ \hline
 \end{tabular}
 \caption{Violations of the 80 column rule}
 \label{table:80}
@@ -205,9 +205,8 @@ resist violating the 80-column rule (Table~\ref{table:80}). A quick glance
 at the violations shows that most of the cases consist of exceeing the limit
 by only a few characters. While most editors can be configured to insert
 spaces in place of tabs, there is no active check on enforcing the 80-column
-rule while coders are working. We suggest here that many of the violations
-simply escaped the notice of their authors. Indeed, MLton contains
-many width violations in spite of what is stated in the style guide.
+rule while coders are working.
+Indeed, MLton contains many width violations in spite of what is stated in the style guide.
 \subsection{Verbosity in If Expressions}
 A convention cited in the Cornell style guide is that we should use \texttt{if}
 expressions wisely. There are two specific uses of \texttt{if} that we
@@ -220,13 +219,13 @@ Rewriting these cases should help to improve readability and reduce verbosity in
 
 \begin{table}[h!]
 \centering
-\begin{tabular}{|c||c|c||c|}\hline
-Project & \texttt{if} violations & Lines & Lines per instance \\ \hline\hline
-SMLNJ & 25 & 81124 & 3245.0 \\
-MLKit & 182 & 530334 & 2913.9 \\
-FoxNet & 0 & 8545 & -- \\
-Til & 149 & 222317 & 1492.1 \\
-MLton & 72 & 168323 & 2337.8 \\ \hline
+\begin{tabular}{|c||c|c|}\hline
+Project & \texttt{if} violations & Lines per instance \\ \hline\hline
+SML/NJ & 25 & 3245.0 \\
+MLKit & 182 & 2913.9 \\
+FoxNet & 0 & -- \\
+Til & 149 & 1492.1 \\
+MLton & 72 & 2337.8 \\ \hline
 \end{tabular}
 \caption{Selected misuse of \texttt{if} (see text)}
 \label{table:if}
@@ -255,13 +254,13 @@ rewrite in a more concise way by using \texttt{orelse}. In example 2, the use of
 
 The expert code contains many uses of \texttt{orelse} and \texttt{andalso}, so we are forced to
 conclude that the coders either missed an opportunity to use those syntactic constructs or chose
-not to do so. But when we see in SMLNJ, MLKit, and Til an expression of the form:
+not to do so. But when we see in SML/NJ, MLKit, and Til an expression of the form:
 \[\texttt{if }\langle expression\rangle\texttt{ then true else false}\]
 we cannot help but wonder if it not just the former scenario. Despite the existence of
 our selected \texttt{if} violations in expert code, we
 recommend that beginners avoid verbosity in their \texttt{if} expressions by writing them
 in more concise forms.
-\section{Fold}\label{subsec:fold}
+\subsection{Fold}\label{subsec:fold}
 The Cornell and CMU style guides both suggest making heaving use of library functions.
 The author has noted in discussions with the course staff for a programming languages course
 that library functions for lists were frequent missed opportunities. We
@@ -272,6 +271,15 @@ for missed opportunities to apply a fold. \cite{Jeu13} describes an algorithm fo
 explicitly recursive functions into folds. We chose not to tackle the more challenging
 problem of finding all fold opportunities or transforming them,
 but instead chose to look for a specific subset where folds might be applied.
+
+Like \cite{Jeu13}, we are looking for cases of explicit recursion. Specifically, we try find
+find instances of the following form:
+\begin{center}
+\texttt{fun f }\(e_{1}\ldots e_{i-1}\)\texttt{ (x::xs) }\(e_{i+1}\ldots e_{n}\) \(= e\)
+
+where $e$ has the subexpression \texttt{f }\(v_{1}\ldots v_{i-1}\)\texttt{ xs }\(v_{i+1}\ldots v_{n}\)
+\end{center}
+That is, we're explicitly calling a recursive function on the tail of a input list.
 \section{SYNTACTIC FORMS}\label{sec:syntax}
 \subsection{Imperative Features}\label{subsec:imper}
 In Prof. Norman Ramsey's class on programming languages, one easy way to lose points
@@ -291,20 +299,20 @@ it behooves us to examine whether such imperative features are necessary or avoi
 \subsubsection{Expressions with \texttt{while}}
 \begin{table}[h!]
 \centering
-\begin{tabular}{|c||c|c||c|c|c|}
+\begin{tabular}{|c||c|c||c|c|}
 \hline
-Project & \multicolumn{2}{c||}{Instances of \texttt{while}} & Lines & \multicolumn{2}{c|}{Lines per instance} \\ \cline{2-3}\cline{5-6}
- & total & outside of tests &  & total & outside of tests \\ \hline\hline
-SMLNJ & 0 & 0 & 81124 & -- & --\\ 
-MLKit & 18 & 0 & 530334 & 29463 & --\\
-FoxNet & 0 & 0 & 8545 & -- & -- \\
-Til & 104 & 2 & 222317 & 2137.66 & 11158.5 \\
-MLton & 20 & 0 & 168323 & 8416.15 & --\\ \hline
+Project & \multicolumn{2}{c||}{Instances of \texttt{while}} & \multicolumn{2}{c|}{Lines per instance} \\ \cline{2-3}\cline{4-5}
+ & total & outside of tests & total & outside of tests \\ \hline\hline
+SML/NJ & 0 & 0 & -- & --\\ 
+MLKit & 18 & 0 & 29463 & --\\
+FoxNet & 0 & 0 & -- & -- \\
+Til & 104 & 2 & 2137.66 & 11158.5 \\
+MLton & 20 & 0 & 8416.15 & --\\ \hline
 \end{tabular}
 \caption{Occurrences of \texttt{while} expressions}
 \label{table:while}
 \end{table}
-As we can see from Table~\ref{table:while}, two of the projects -- SMLNJ and FoxNet -- contain no occurrences
+As we can see from Table~\ref{table:while}, two of the projects -- SML/NJ and FoxNet -- contain no occurrences
 of \texttt{while} loops at all.
 
 MLKit contains a few handfuls of \texttt{while} usages, but these instances
@@ -329,14 +337,14 @@ We therefore recommend that beginners avoid using \texttt{while} loops completel
 \subsubsection{Expression List}
 \begin{table}[h!]
 \centering
-\begin{tabular}{|c||c|c||c|c|c|}
+\begin{tabular}{|c||c|c|}
 \hline
-Project & Instances of expression lists & Lines & Lines per instance \\ \hline\hline
-SMLNJ & 1970 & 81124 & 41.18 \\ 
-MLKit & 7900 & 530334 & 67.13 \\
-FoxNet & 77 & 8545 & 111.0 \\
-Til & 4414 & 222317 & 50.37 \\
-MLton & 1907 & 168323 & 88.27 \\ \hline
+Project & Instances of expression lists & Lines per instance \\ \hline\hline
+SML/NJ & 1970 & 41.18 \\ 
+MLKit & 7900 & 67.13 \\
+FoxNet & 77 & 111.0 \\
+Til & 4414 & 50.37 \\
+MLton & 1907 & 88.27 \\ \hline
 \end{tabular}
 \caption{Occurrences of \texttt{while} expressions}
 \label{table:explist}
@@ -344,7 +352,7 @@ MLton & 1907 & 168323 & 88.27 \\ \hline
 Table~\ref{table:explist} shows how often expression lists are used in our
 examples of expert ML code. We find that the number of uses is significantly
 greater than that of the \texttt{while} expression. The greatest number
-of occurrences, normalized by the number of lines, appears to be in the SMLNJ
+of occurrences, normalized by the number of lines, appears to be in the SML/NJ
 compiler where we find an expression list on average once every with every
 40 or so lines of code.
 
@@ -388,7 +396,7 @@ and conform to it as much as possible. Beginners in ML are encouraged for follow
 \bibitem[Bouwers et al. 2012]{Bou12} Bouwers, E., Visser, J., van Deursen, A. (2012) Getting what you measure. \emph{Commun. ACM}, \textbf{55}, 54--59.
 \bibitem[Jones 1994]{Jon94} Jones, C. (1994) Software metrics: good, bad and missing. \emph{Computers}, \textbf{27}, 98--100.
 \bibitem[Takai et al. 2011]{Tak11} Takai, Y., Kobayashi, T., Agusa, K. (2011) Software Metrics Based on Coding Standards Violations. In \emph{2011 Joint Conference of the 21st Int'l Workshop on Software Measurement and 6th Int'l Conference on Software Process and Product Measurement (IWSM-MENSURA)} Nara, Japan. 273--278. Washington, D.C.: IEEE Computer Society.
-\bibitem[Hughes 90]{Hug90} Hughes, J. (1990) Why Functional Programming MAtters. In D.\,A.\,Turner, ed, \emph{Research Topics in Functional Programming}. Boston, MA: Addison Wesley.
+\bibitem[Hughes 1990]{Hug90} Hughes, J. (1990) Why Functional Programming MAtters. In D.\,A.\,Turner, ed, \emph{Research Topics in Functional Programming}. Boston, MA: Addison Wesley.
 \bibitem[Peyton Jones, Wadler 1993]{Jon93} Peyton Jones, S.\,L., Wadler, P. (1993) Imperative Functional Programming. In \emph{ACM Symposium on Principles of Programming Languages (POPL'93)}. Charleston, SC. 71--84. New York, NY: ACM.
 \bibitem[CMU 2012]{Cmu12} CMU Computer Science Department. (2012) SML Style Guide. Accessed on 14 Nov 2013 from \url{http://www.cs.cmu.edu/~15150/resources/style.pdf}
 \bibitem[Van der Jeugt et al. 2013]{Jeu13} Van der Jeugt, J., Keuchel, S., Schrijvers, T. (2013) Bringing Functions into the Fold. Unpublished manuscript.

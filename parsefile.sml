@@ -653,15 +653,15 @@ structure ParseFile :> PARSEFILE = struct
               List.foldl (fn (c,acc) =>
                 let
                   val pats = getPatsFromClause c
-                  fun findCons _ [] = NONE
+                  fun findCons _ [] = []
                     | findCons i (p::ps) =
                         (case isPatternCons p of
-                           SOME n => SOME (c, i, n) 
+                           SOME n => (c, i, n) :: findCons (i + 1) ps
                          | NONE => findCons (i + 1) ps)
                 in
                   (case findCons 0 pats of
-                     SOME tup => tup :: acc
-                   | NONE => acc)
+                     [] => acc
+                   | xs => acc @ xs)
                 end) [] cs
             end
         | findConsClauses _ = []
@@ -776,5 +776,4 @@ structure ParseFile :> PARSEFILE = struct
           end)
       fs
     end
-
 end
