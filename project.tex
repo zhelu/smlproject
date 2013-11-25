@@ -18,6 +18,7 @@
 \usepackage{subfig}
 \usepackage{tikz}
 \usepackage{url}
+\usepackage{array}
 %margins
 \setlength{\textwidth}{6.5in} \setlength{\evensidemargin}{0in}
 \setlength{\oddsidemargin}{0in}
@@ -70,8 +71,10 @@
 \input{epsf.sty}
 \maketitle
 \begin{abstract}
+Beginners can become experts through directed practice towards a goal. In an effort to
+help them direct their practice, we make observations about what good ML code looks like.
 The aim of this paper is two-fold: (1)~identify features common to code written in Standard ML by experts and
-(2)~evaluate how well expert ML code conforms to published style guides for ML.
+(2)~provide suggestions to help beginners model their code after expert code.
 \end{abstract}
 \section{INTRODUCTION}
 There are many ways to define what an expert is.
@@ -109,8 +112,9 @@ measurements about cost and effort, productivity, assessment of reliability and
 quality, evaluating processes (including development and maintenance), and elements
 related to project and product management.\cite{Ord08} Despite being around since
 the early 1970s, there are still some significant issues with how measurements
-about software are made in practice (see for example \cite{Jon94} and \cite{Bou12}).
-Nevertheless, due to the high level of potential utility from prudent measurements,
+about software are made in practice and serious criticisms about whether or not the metrics
+measure anything useful (see for example \cite{Jon94} and \cite{Bou12}).
+Nevertheless, due to the high potential of prudent measurements,
 a growing number of organizations have integrated software measurement programs into
 their workflows.\cite{Ord08}
 
@@ -244,6 +248,21 @@ we cannot help but wonder if it not just the former scenario. Despite the existe
 our selected \texttt{if} violations in expert code, we
 recommend that beginners avoid verbosity in their \texttt{if} expressions by writing them
 in more concise forms.
+
+\begin{table}[h!]
+\centering
+\begin{tabular}{|c||c|c||>{\centering\arraybackslash\hspace{0pt}}p{1in}|c|}\hline
+Project & \texttt{if} violations & Lines per instance & Missed fold opportunities & Lines per instance \\ \hline\hline
+SML/NJ & 25 & 3245.0 & 75 & 1081.7 \\
+MLKit & 182 & 2913.9 & 1470 & 360.77 \\
+FoxNet & 0 & -- & 10 & 854.50 \\
+Til & 149 & 1492.1 & 751 & 296.03 \\
+MLton & 72 & 2337.8 & 202 & 833.28 \\ \hline
+\end{tabular}
+\caption{Selected usage style violations (see text)}
+\label{table:style}
+\end{table}
+
 \subsection{Fold}\label{subsec:fold}
 The Cornell and CMU style guides both suggest making heaving use of library functions.
 The author has noted in discussions with the course staff for a programming languages course
@@ -271,21 +290,82 @@ We won't concern ourselves with the order of the pattern match because either th
 are mutually exclusive (e.g., \texttt{[]} or a cons cell) or there is a redundant match
 and the compiler will throw an error.
 
-\begin{table}[h!]
-\centering
-\begin{tabular}{|c||c|c||c|c|}\hline
-Project & \texttt{if} violations & Lines per instance & Missed fold opportunities & Lines per instance \\ \hline\hline
-SML/NJ & 25 & 3245.0 & 75 & 1081.7 \\
-MLKit & 182 & 2913.9 & 1470 & 360.77 \\
-FoxNet & 0 & -- & 10 & 854.50 \\
-Til & 149 & 1492.1 & 751 & 296.03 \\
-MLton & 72 & 2337.8 & 202 & 833.28 \\ \hline
-\end{tabular}
-\caption{Selected usage style violations (see text)}
-\label{table:style}
-\end{table}
+\begin{figure}[h!]
+\begin{enumerate}
+\item \begin{verbatim}
+fun procstrbs([]) = []
+  | procstrbs((A.STRB{name,...})::rest) = name::(procstrbs rest)
+\end{verbatim}
 
+rewrite as:
+\begin{verbatim}
+fun procstrbs = List.foldr (fn (A.STRB{name,...}, a) => name :: a) []
+\end{verbatim}
+\item \begin{verbatim}
+fun find (h :: t) = if h=index_n2 then true else find t
+  | find nil =  false
+\end{verbatim}
 
+rewrite as:
+\begin{verbatim}
+fun find = List.exists (fn x => x = index_n2)
+\end{verbatim}
+\item \begin{verbatim}
+fun find [] = raise NotFound
+  | find ((tv',ty)::rest) = if eqTyvar(tv,tv') then ty
+                            else find rest
+\end{verbatim}
+
+rewrite as:
+\begin{verbatim}
+fun find = List.foldl
+             (fn ((tv',ty),f) => if eqTyvar(tv,tv') then ty else f tv)
+             (fn _ => raise NotFound)
+\end{verbatim}
+\end{enumerate}
+\caption{Rewriting explicit recursion with library functions}
+\label{figure:fold}
+\end{figure}
+
+We see from Table~\ref{table:style} that missed opportunities for fold occur more often
+than opportunities to rewrite \texttt{if} expressions. Perhaps this is
+because \texttt{if} statements are relatively easy to reason about, but
+rewriting a function as a fold over a list can be much more challenging.
+And when a fold is not obvious, the programmer is surely tempted to just
+get the job done with a recursive function definition.
+
+Few fold opportunities were very obvious, for example, Figure~\ref{figure:fold} example 1.
+Indeed, we did not find many fold opportunities of this variety.
+
+Sometimes, the recursive function can be rewritten in terms of another library function
+from the \texttt{List} structure, which itself could be written as fold.
+Figure~\ref{figure:fold} example 2 shows an example that can be rewritten with \texttt{find}.
+
+The transformation to a fold can be particularly challenging when the recursive function
+has an accumulating parameter, but as \cite{Jeu13} points out,
+when we consider the function as returning a function that takes a parameter
+instead of having an accumulating parameter, the transformation to a fold
+can be easier. An example of this type is shown in Figure~\ref{figure:fold} example 3.
+Many recursive functions with side-effects can be rewritten in this manner.
+
+The fact that a small fraction of the missed fold opportunities were obvious
+suggests that the expert coders were actively trying to rewrite their
+recursive functions using folds or other library functions on lists. The
+cases where they did not convert such explicit recursion into folds
+were either missed or perhaps left in their recursive form for other
+reason of legibility.
+\subsection{Final thoughts on style}\label{subsec:stylethoughts}
+We conclude this section with a few thoughts on style.
+The takeaway for beginners from this section should not be
+that because we see style violations in expert code,
+style is not important. On the contrary, we believe that
+these errors reflect the challenges that even experts
+struggle with in the code, both in identifying places
+whether style violations occur and finding consensus on
+what good style is. Our suggestion to the beginners is
+remember style's purpose of making code easier to read
+and maintain, and then being as consistent as possible
+in applying the style of his or her choice.
 \section{SYNTACTIC FORMS}\label{sec:syntax}
 \subsection{Imperative Features}\label{subsec:imper}
 In Prof. Norman Ramsey's class on programming languages, one easy way to lose points
@@ -393,18 +473,18 @@ and conform to it as much as possible. Beginners in ML are encouraged for follow
 \section{IMPLEMENTATION}\label{sec:impl}
 \section{CONCLUSIONS AND FUTURE WORK}\label{sec:future}
 \begin{thebibliography}{99}
-\bibitem[Gladwell 2008]{Gla08} Gladwell, M. (2008) \emph{Outliers}. Little, Brown and Co., New York, NY.
-\bibitem[Ullman 1998]{Ull98} Ullman, J.\,D. (1998) \emph{Elements of ML Programming} (ML97 Ed). Prentice Hall, Upper Saddle River, NJ.
-\bibitem[Binkley 2007]{Bin07} Binkley, D., 2007. Source Code Analysis: A Road Map. In \emph{Workshop on the Future of Software Engineering (FOSE'07)}. Minneapolis, MN. 104--119. Washington, D.C.: IEEE Computer Society.
-\bibitem[Vogelsang et al. 2010]{Vog10} Vogelsang, S., Fehnker, A., Huuck, R., Reif, W. (2010) Software Metrics in Static Program Analysis. In \emph{Formal Methods and Software Engineering. Proceedings 12th International Conference on Formal Engineering Methods (ICFEM'10)}. 485--500.
-\bibitem[Ordonez and Hadda 2008]{Ord08} Ordonez, M.\,J. Hadda, H.\,M. (2008) The State of Metrics in Software Industry. In \emph{5th International Conference Information Technology: New Generations (ITNG'08)} Las Vegas, NV. 453--458. Washington, D.C.: IEEE Computer Society.
 \bibitem[Ayerbe and Vazquez 1998]{Aye98} Ayerbe, A., Vazquez, I. (1998) Software Products Quality Improvement with a Programming Style Guide and a Measurement Process. In \emph{Proceedings 22nd Annual International Computer Software and Applications Conference (COMPSAC'98)}. 172--178.
+\bibitem[Binkley 2007]{Bin07} Binkley, D., 2007. Source Code Analysis: A Road Map. In \emph{Workshop on the Future of Software Engineering (FOSE'07)}. Minneapolis, MN. 104--119. Washington, D.C.: IEEE Computer Society.
 \bibitem[Bouwers et al. 2012]{Bou12} Bouwers, E., Visser, J., van Deursen, A. (2012) Getting what you measure. \emph{Commun. ACM}, \textbf{55}, 54--59.
-\bibitem[Jones 1994]{Jon94} Jones, C. (1994) Software metrics: good, bad and missing. \emph{Computers}, \textbf{27}, 98--100.
-\bibitem[Takai et al. 2011]{Tak11} Takai, Y., Kobayashi, T., Agusa, K. (2011) Software Metrics Based on Coding Standards Violations. In \emph{2011 Joint Conference of the 21st Int'l Workshop on Software Measurement and 6th Int'l Conference on Software Process and Product Measurement (IWSM-MENSURA)} Nara, Japan. 273--278. Washington, D.C.: IEEE Computer Society.
-\bibitem[Hughes 1990]{Hug90} Hughes, J. (1990) Why Functional Programming MAtters. In D.\,A.\,Turner, ed, \emph{Research Topics in Functional Programming}. Boston, MA: Addison Wesley.
-\bibitem[Peyton Jones, Wadler 1993]{Jon93} Peyton Jones, S.\,L., Wadler, P. (1993) Imperative Functional Programming. In \emph{ACM Symposium on Principles of Programming Languages (POPL'93)}. Charleston, SC. 71--84. New York, NY: ACM.
 \bibitem[CMU 2012]{Cmu12} CMU Computer Science Department. (2012) SML Style Guide. Accessed on 14 Nov 2013 from \url{http://www.cs.cmu.edu/~15150/resources/style.pdf}
+\bibitem[Gladwell 2008]{Gla08} Gladwell, M. (2008) \emph{Outliers}. Little, Brown and Co., New York, NY.
+\bibitem[Hughes 1990]{Hug90} Hughes, J. (1990) Why Functional Programming Matters. In D.\,A.\,Turner, ed, \emph{Research Topics in Functional Programming}. Boston, MA: Addison Wesley.
+\bibitem[Jones 1994]{Jon94} Jones, C. (1994) Software metrics: good, bad and missing. \emph{Computers}, \textbf{27}, 98--100.
+\bibitem[Ordonez and Hadda 2008]{Ord08} Ordonez, M.\,J. Hadda, H.\,M. (2008) The State of Metrics in Software Industry. In \emph{5th International Conference Information Technology: New Generations (ITNG'08)} Las Vegas, NV. 453--458. Washington, D.C.: IEEE Computer Society.
+\bibitem[Peyton Jones, Wadler 1993]{Jon93} Peyton Jones, S.\,L., Wadler, P. (1993) Imperative Functional Programming. In \emph{ACM Symposium on Principles of Programming Languages (POPL'93)}. Charleston, SC. 71--84. New York, NY: ACM.
+\bibitem[Takai et al. 2011]{Tak11} Takai, Y., Kobayashi, T., Agusa, K. (2011) Software Metrics Based on Coding Standards Violations. In \emph{2011 Joint Conference of the 21st Int'l Workshop on Software Measurement and 6th Int'l Conference on Software Process and Product Measurement (IWSM-MENSURA)} Nara, Japan. 273--278. Washington, D.C.: IEEE Computer Society.
+\bibitem[Ullman 1998]{Ull98} Ullman, J.\,D. (1998) \emph{Elements of ML Programming} (ML97 Ed). Prentice Hall, Upper Saddle River, NJ.
 \bibitem[Van der Jeugt et al. 2013]{Jeu13} Van der Jeugt, J., Keuchel, S., Schrijvers, T. (2013) Bringing Functions into the Fold. Unpublished manuscript.
+\bibitem[Vogelsang et al. 2010]{Vog10} Vogelsang, S., Fehnker, A., Huuck, R., Reif, W. (2010) Software Metrics in Static Program Analysis. In \emph{Formal Methods and Software Engineering. Proceedings 12th International Conference on Formal Engineering Methods (ICFEM'10)}. Shanghai, China. 485--500. Heidelberg, Germany: Springer.
 \end{thebibliography}
 \end{document}

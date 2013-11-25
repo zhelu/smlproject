@@ -4,17 +4,20 @@ Group
   signature PARSEFILE
   signature VIOLATION
   signature MANYFILES
+  signature DOT
 
   structure Counter
   structure AstType
   structure ParseFile
   structure Violation
   structure ManyFiles
+  structure Dot
 is
   counter.sml
   asttype.sml
   parsefile.sml
   manyfiles.sml
+  dot.sml
   violation.sml
   
   $/basis.cm

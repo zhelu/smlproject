@@ -22,6 +22,9 @@ signature MANYFILES = sig
   (* Count total lines in correctly parsed files *)
   val countLines : string list -> int
 
+  (* Count total number of correctly parsed files *)
+  val countFiles : string list -> int
+
   (* get counts of fun, val, str declarations and the level of nesting *)
   val getDecLevelCounts : string list ->
                             (AstType.dectype * int) Counter.counter
@@ -140,6 +143,10 @@ structure ManyFiles :> MANYFILES = struct
     in
       L.foldr (op +) 0 counts
     end
+
+  (* see signature *)
+  fun countFiles fileList =
+    length (L.filter (fn f => parseFile f <> NONE) fileList)
 
   (* see signature *)
   fun getDecLevelCounts fileList =
