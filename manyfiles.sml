@@ -42,9 +42,11 @@ signature MANYFILES = sig
    * length greater than 1 *)
   val findNontrivialSeqExp : string list -> string list
 
-  (* Given a filter predicate and a list of files, count all variable names
-   * that satisfy the predicate in all parseable files. *)
-  val countAppVars : (string -> bool) -> string list -> int
+  (* Given a structure name and a ist of strings and a list of all files,
+   * return a counter for the number of times that variable name appears as is
+   * or prepended with the structure name in all files *)
+  val countAppVars : string -> string list -> string list ->
+                       string Counter.counter
 
   (* Given a violation aggregator from the violation structure and a list of
    * files, find all violations of that type in the supplied files. *)
@@ -192,16 +194,24 @@ structure ManyFiles :> MANYFILES = struct
         end) [] fileList
 
   (* see signature *)
-  fun countAppVars p fileList =
+  fun countAppVars strct allNames fileList =
     L.foldl
       (fn (f, acc) =>
         let
           val names = parseFile f >= ParseFile.getAppVars
         in
           case names of
-            SOME xs => length (List.filter p xs) + acc
+            SOME xs =>
+              List.foldl
+                (fn (n,a) =>
+                  Counter.increment n
+                    (length
+                      (List.filter
+                        (fn x =>
+                          x = n orelse String.isSuffix (strct ^ "." ^ n) x) xs))
+                    a) acc allNames
           | NONE => acc
-        end) 0 fileList
+        end) Counter.emptyCounter fileList
 
   (* see signature *)
   fun getViolations violationF fileList =

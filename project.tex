@@ -78,22 +78,23 @@ The aim of this paper is two-fold: (1)~identify features common to code written 
 \end{abstract}
 \section{INTRODUCTION}
 There are many ways to define what an expert is.
-An often cited rule attributed to Malcolm Gladwell is that one requires 10000 hours of deliberate practice
+For example, an often cited rule is that one requires 10000 hours of deliberate practice
 in a particular field to become an expert \cite{Gla08}. But if we want to provide novice programmers
 with specifics during these 10000 hours, what should we tell them? One challenge is that experts themselves
 do not necessarily know what features identify them as experts and what features are unique to them as individuals.
 
-We attempt to shed light onto this project by employing software metrics, by trying to find measureable quantities
+We attempt to shed light onto this problem by employing software metrics,
+by trying to find measureable quantities
 that provide some metric for evaluating software. Specifically,
 We approach this problem by examining source code written by experts.
 
 For samples of expert code, we turned to prominent projects where the source code is readily available:
 \begin{enumerate}
-\item The Standard ML of New Jersey compiler (SML/NJ),\footnote{\url{http://smlnj.cs.uchicago.edu/dist/working/110.76/compiler.tgz}} whose parser was used extensively for code analysis in this project (81124 lines of parseable code)
-\item The MLKit compiler for SML\footnote{\url{http://www.itu.dk/research/mlkit/dist/mlkit-4.3.0-src.tgz}} (530334 lines of parseable code)
-\item FoxNet, an implementation of the standard TCP/IP networking protocol stack in SML\footnote{\url{ftp://ftp.cs.cmu.edu/project/fox/snapshot/foxnet.tar.gz}} (8545 lines of parseable code)
-\item Til, a type-directed compiler for ML\footnote{\url{http://www.cs.cornell.edu/Info/People/jgm/til.tar.Z}} (222317 lines of parseable code)
-\item MLton, an open-source, whole-program, optimizing SML compiler\footnote{\url{http://sourceforge.net/projects/mlton/files/mlton/20130715/mlton-20130715.src.tgz/download}} (168323 lines of parseable code)
+\item The Standard ML of New Jersey compiler (SML/NJ), whose parser was used extensively for code analysis in this project (311 parseable files, 81124 lines of code)\footnote{\url{http://smlnj.cs.uchicago.edu/dist/working/110.76/compiler.tgz}}
+\item The MLKit compiler for SML (2292 parseable files, totalling 530334 lines of code)\footnote{\url{http://www.itu.dk/research/mlkit/dist/mlkit-4.3.0-src.tgz}}
+\item FoxNet, an implementation of the standard TCP/IP networking protocol stack in SML (75 parseable files, 8545 lines of code)\footnote{\url{ftp://ftp.cs.cmu.edu/project/fox/snapshot/foxnet.tar.gz}}
+\item Til, a type-directed compiler for ML (618 parseable files, totalling 222317 lines of code)\footnote{\url{http://www.cs.cornell.edu/Info/People/jgm/til.tar.Z}}
+\item MLton, an open-source, whole-program, optimizing SML compiler (855 parseable files, 168323 lines of code)\footnote{\url{http://sourceforge.net/projects/mlton/files/mlton/20130715/mlton-20130715.src.tgz/download}}
 \end{enumerate}
 
 The layout of this paper is as follow.
@@ -102,7 +103,8 @@ concerning software metrics and source code analysis.
 We look at how well expert code conforms to readily available
 style guides in section~\ref{sec:style}.
 Section~\ref{sec:syntax} discusses an analysis
-of the distribution of syntactic forms. The implementation is discussed
+of the distribution of syntactic forms.
+The implementation is discussed
 in section~\ref{sec:impl}. Finally, we conclude and reflect in section~\ref{sec:future}.
 \section{SOFTWARE METRICS AND SOURCE CODE ANALYSIS}\label{sec:metric}
 \subsection{SOFTWARE METRICS}
@@ -185,7 +187,7 @@ wrap at 80 columns. \cite{Cmu12}
 
 \begin{table}[t!]
 \centering
-\begin{tabular}{|c||c|c||c|c|}
+\begin{tabular}{|l||c|c||c|c|}
 \hline
 Project & Tab violations & Lines per instance & Column violations & Lines per instance \\ \hline\hline
 SML/NJ & 23115 & 3.5096 & 350 & 231.78 \\
@@ -251,7 +253,7 @@ in more concise forms.
 
 \begin{table}[h!]
 \centering
-\begin{tabular}{|c||c|c||>{\centering\arraybackslash\hspace{0pt}}p{1in}|c|}\hline
+\begin{tabular}{|l||c|c||>{\centering\arraybackslash\hspace{0pt}}p{1in}|c|}\hline
 Project & \texttt{if} violations & Lines per instance & Missed fold opportunities & Lines per instance \\ \hline\hline
 SML/NJ & 25 & 3245.0 & 75 & 1081.7 \\
 MLKit & 182 & 2913.9 & 1470 & 360.77 \\
@@ -385,7 +387,7 @@ it behooves us to examine whether such imperative features are necessary or avoi
 \subsubsection{Expressions with \texttt{while}}
 \begin{table}[h!]
 \centering
-\begin{tabular}{|c||c|c||c|c|}
+\begin{tabular}{|l||c|c||c|c|}
 \hline
 Project & \multicolumn{2}{c||}{Instances of \texttt{while}} & \multicolumn{2}{c|}{Lines per instance} \\ \cline{2-3}\cline{4-5}
  & total & outside of tests & total & outside of tests \\ \hline\hline
@@ -423,7 +425,7 @@ We therefore recommend that beginners avoid using \texttt{while} loops completel
 \subsubsection{Expression Lists}
 \begin{table}[h!]
 \centering
-\begin{tabular}{|c||c|c|}
+\begin{tabular}{|l||c|c|}
 \hline
 Project & Instances of expression lists & Lines per instance \\ \hline\hline
 SML/NJ & 1970 & 41.18 \\ 
@@ -468,8 +470,94 @@ Imperative features are clearly unavoidable as evidenced in expert ML code. The 
 limit their uses of expression lists to a few general cases, mostly dominated by I/O.
 We conclude that the ML experts believe in the ``functional, side-effect-free'' style
 and conform to it as much as possible. Beginners in ML are encouraged for follow their example.
-\subsection{Common Library Functions}\label{subsec:imp}
-\subsection{Program Structure}\label{subsec:struct}
+\subsection{List Library Functions}\label{subsec:imp}
+We wanted to see if there was any discernable pattern in how expert programmers
+used library functions, but not all projects require the same library.
+It is difficult to imagine writing a substantial amount of code in ML without
+relying heavily on lists, so we decided to just examine how expert programmer relied upon the functions
+in the \texttt{List} structure from the standard basis.
+
+\begin{table}[h!]
+\centering
+\begin{tabular}{|l||>{\centering\arraybackslash}p{0.62in}|>{\centering\arraybackslash\hspace{0pt}}p{0.9in}|>{\centering\arraybackslash\hspace{0pt}}p{0.6in}|>{\centering\arraybackslash\hspace{0pt}}p{0.5in}|>{\centering\arraybackslash\hspace{0pt}}p{0.6in}|}
+\hline
+Function & SML/NJ & MLKit & Foxnet & Til & MLton \\ \hline\hline
+\texttt{::} & 882 & 10250 & 97 & 2496 & 1585 \\
+\texttt{@} & \textbf{205} & \textbf{1040} & \textbf{18} & \textbf{476} & \textbf{241} \\
+\texttt{all} & 13 & 458 & 0 & 63 & 95 \\
+\texttt{app} & \textbf{331} & \textbf{1236} & 3 & \textbf{434} & \textbf{231} \\
+\texttt{drop} & 0 & 130 & 0 & 7 & 20 \\
+\texttt{exists} & 24 &  598 & 0 & \textbf{542} & 152 \\
+\texttt{filter} & 17 & 236 & 3 & 62 & 45 \\
+\texttt{find} & 48 & 258 & 0 & 64 & 48 \\
+folds (\texttt{foldl},\texttt{foldr}) & \textbf{237} (89,\textbf{148}) & \textbf{1220} (680,540) & \textbf{15} (7,8) & 75 (61,14) & 205 (129,76) \\
+\texttt{getItem} & 0 & 64 & 0 & 0 & 5 \\
+\texttt{hd} & 42 & 130 & 0 & \textbf{413} & 59 \\
+\texttt{last} & 8 & 116 & 0 & 198 & 48 \\
+\texttt{length} & \textbf{163} & \textbf{1188} & 3 & \textbf{429} & \textbf{340} \\
+\texttt{map} & \textbf{701} & \textbf{3314} & \textbf{61} & \textbf{1642} & \textbf{521} \\
+\texttt{mapPartial} & 7 & 32 & 0 & 0 & 10 \\
+\texttt{nth} & 5 & 74 & 0 & 32 & 21 \\
+\texttt{null} & 8 & 120 & 0 & 23  & 64 \\
+\texttt{partition} & 14  & 50 & 0 & 3 & 11 \\
+\texttt{rev} & 137 & 754 & \textbf{13} & 334 & \textbf{272} \\
+\texttt{revAppend} & 1 & 8 & 0 & 0 & 4 \\
+\texttt{tabulate} & 1 & 206 & 0 & 24  & 100 \\
+\texttt{take} & 6 & 130 & 0 & 10 & 23 \\
+\texttt{tl} & 54 & 200 & 0 & \textbf{505} & 63 \\\hline\hline
+Total & 2904 & 21812 & 213 & 7832 & 4163 \\
+Lines per call & 27.935 & 24.314 & 40.117 & 28.386 & 40.433 \\\hline
+\end{tabular}
+\caption{Calls to functions from the \texttt{List} structure (\texttt{concat} omitted). Bolded entries each account for more than 5\% of the total number of occurrences.}
+\label{table:list}
+\end{table}
+
+Before we analyze the data, we should highlight some salient points.
+Since the easiest way to create lists of arbitrary size is to the use the cons operator (\texttt{::}),
+this operator naturally occurs the most, accounting for, in some cases, up to almost half
+the occurrences of function calls. But we don't gain much insight from looking at this operator
+because it is so common and critical to working with lists. It should also be noted
+that we are excluding any occurrences of the cons operator used in pattern matching.
+Additionally, we had trouble distinguishing \texttt{concat} using from the \texttt{List} structure
+as opposed to the \texttt{String} structure. As a result, the occurrences of \texttt{concat} have been omitted.
+Our results are tabulated in Table~\ref{table:list}.
+
+It is amazing that list functions are used with almost the same frequency (normalized
+by the number of lines) in every expert project. The normalized frequency
+basically stay constant, relative to each other, even when we exclude the occurrences of the cons operator.
+
+The values in bold indicate that a function accounts for more than 5\% of all function calls to the \texttt{List} structure.
+We see that list concatenation (\texttt{@}) and \texttt{map} break the threshold in all 5 projects. Between the
+two, \texttt{map} is more common, occurring almost as frequency as the cons operator in some cases. This
+suggests possibly that expert coders in ML are transforming data in bulk within a list container.
+
+Other functions of note are \texttt{length} and \texttt{app}, both of which each account for more than 5\% of
+occurrences in four of five projects. The \texttt{app} is particularly interesting because it can be
+considered an imperative version of \texttt{map}, which we have observed is called quite often. We hypothesize
+that not only do programmer transform data in bulk as a list with \texttt{map}, the execute side-effects
+in bulk in a list with \texttt{app}. The \texttt{length} function's popularity suggests that
+the cardinality of a list is often more important than its contents.
+
+The pair of fold functions, taken together, break the threshold on three of five projects.
+This is perhaps not surprising since a fold is an excellent way to aggregrate data in a list
+into another value, possibly even another list. Indeed, many of the functions on lists
+including \texttt{map} and \texttt{length} could be rewritten using a fold.
+
+Finally, we point out that the Til project makes heavy use of the head (\texttt{hd}) and tail (\texttt{tl})
+functions which respectively return the first element and all but the first element in a list.
+That no other project makes heavy use of these two functions is interesting because from
+the author's experience, extracting the head and tail of a list is a frequent necessity.
+It is likely that the other four projects make heavy use of pattern matching on a cons cell (e.g., \texttt{x :: xs})
+instead of expliciting call either \texttt{hd} or \texttt{tl}.
+
+To conclude this section, we recommend to beginners to make heavy use of library functions
+for lists. The experts particularly seem to like the list mapping and list contentation operators.
+And despite our criticism of missed fold opportunities, folds are also quite common in code.
+Based on a preference by coders on four of five projects, we recommend using pattern
+matching to extract the head and tail of a list instead of explicit function calls.
+\subsection{Program Hierarchy and Layout}\label{subsec:struct}
+\subsubsection{Modularity}\label{subsubsec:modularity}
+\subsubsection{Helper Functions in \texttt{Let} Expressions}\label{subsubsec:let}
 \section{IMPLEMENTATION}\label{sec:impl}
 \section{CONCLUSIONS AND FUTURE WORK}\label{sec:future}
 \begin{thebibliography}{99}
