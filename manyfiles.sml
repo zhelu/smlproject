@@ -59,6 +59,15 @@ signature MANYFILES = sig
   val getViolationsByFile : (string -> Violation.violation list) ->
                               string list ->
                               (string * Violation.violation list) list
+
+  (* Given a list of files, filter the list to have only files that contain 
+   * only (or at least one) module *)
+  val filterIfTopLevelAllModule : string list -> string list
+  val filterIfTopLevelHasModule: string list -> string list
+
+  (* Given a list of files, get the FunDecs inside of lets *)
+  val getFunsInsideLet : string list -> Ast.dec list
+  val getFunsInsideLocal : string list -> Ast.dec list
 end
 
 structure ManyFiles :> MANYFILES = struct
@@ -69,7 +78,15 @@ structure ManyFiles :> MANYFILES = struct
 
   (* given a filename, produce SOME parse tree if the parsing is successeful
      or NONE if the parsing fails *)
-  fun parseFile f = SOME (P.readFile f) handle _ => NONE
+  fun parseFile f =
+    let
+      val p = SOME (P.readFile f) handle _ => NONE
+    in
+      (case p of
+         SOME (Ast.SeqDec []) => NONE (* don't count if no decs *)
+       | SOME _ => p
+       | NONE => NONE)
+    end
 
   (* type check *)
   val _ = op parseFile : string -> Ast.dec option
@@ -243,4 +260,66 @@ structure ManyFiles :> MANYFILES = struct
               end
           | NONE => acc
         end) [] fileList
+
+  (* see signature *)
+  fun filterIfTopLevelAllModule fileList =
+    L.filter
+      (fn f =>
+        let
+          val v = parseFile f >= ParseFile.isTopLevelOnlyModule
+        in
+          case v of
+            SOME t => t
+          | NONE => false
+        end) fileList
+
+  (* see signature *)
+  fun filterIfTopLevelHasModule fileList =
+    L.filter
+      (fn f =>
+        let
+          val v = parseFile f >= ParseFile.topLevelHasModule
+        in
+          case v of
+            SOME t => t
+          | NONE => false
+        end) fileList
+
+  (* see signature *)
+  fun getFunsInsideLet fileList =
+    L.foldl
+    (fn (f,a) =>
+       let
+         val letExps = parseFile f >= (ParseFile.findExp [AstType.LETEXP])
+       in
+         case letExps of
+           SOME es =>
+             a @
+             List.filter
+               (fn d => AstType.decToDecType d = AstType.FUNDEC)
+               (List.concat
+                 (map
+                   (fn (Ast.LetExp {dec = d,...}) =>
+                     ParseFile.getTopLevelDec d) es))
+         | NONE => a
+       end) [] fileList
+
+  (* see signature *)
+  fun getFunsInsideLocal fileList =
+    L.foldl
+    (fn (f,a) =>
+       let
+         val localDecs = parseFile f >= (ParseFile.findDec [AstType.LOCALDEC])
+       in
+         case localDecs of
+           SOME ds =>
+             a @
+             List.filter
+               (fn d => AstType.decToDecType d = AstType.FUNDEC)
+               (List.concat
+                 (map
+                   (fn (Ast.LocalDec (d,_)) =>
+                     ParseFile.getTopLevelDec d) ds))
+         | NONE => a
+       end) [] fileList
 end

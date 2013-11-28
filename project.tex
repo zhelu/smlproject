@@ -90,11 +90,11 @@ We approach this problem by examining source code written by experts.
 
 For samples of expert code, we turned to prominent projects where the source code is readily available:
 \begin{enumerate}
-\item The Standard ML of New Jersey compiler (SML/NJ), whose parser was used extensively for code analysis in this project (311 parseable files, 81124 lines of code)\footnote{\url{http://smlnj.cs.uchicago.edu/dist/working/110.76/compiler.tgz}}
-\item The MLKit compiler for SML (2292 parseable files, totalling 530334 lines of code)\footnote{\url{http://www.itu.dk/research/mlkit/dist/mlkit-4.3.0-src.tgz}}
-\item FoxNet, an implementation of the standard TCP/IP networking protocol stack in SML (75 parseable files, 8545 lines of code)\footnote{\url{ftp://ftp.cs.cmu.edu/project/fox/snapshot/foxnet.tar.gz}}
-\item Til, a type-directed compiler for ML (618 parseable files, totalling 222317 lines of code)\footnote{\url{http://www.cs.cornell.edu/Info/People/jgm/til.tar.Z}}
-\item MLton, an open-source, whole-program, optimizing SML compiler (855 parseable files, 168323 lines of code)\footnote{\url{http://sourceforge.net/projects/mlton/files/mlton/20130715/mlton-20130715.src.tgz/download}}
+\item The Standard ML of New Jersey compiler (SML/NJ), whose parser was used extensively for code analysis in this project (299 parseable files, 81102 lines of code)\footnote{\url{http://smlnj.cs.uchicago.edu/dist/working/110.76/compiler.tgz}}
+\item The MLKit compiler for SML (2286 parseable files, totalling 530334 lines of code)\footnote{\url{http://www.itu.dk/research/mlkit/dist/mlkit-4.3.0-src.tgz}}
+\item FoxNet, an implementation of the standard TCP/IP networking protocol stack in SML (74 parseable files, 8545 lines of code)\footnote{\url{ftp://ftp.cs.cmu.edu/project/fox/snapshot/foxnet.tar.gz}}
+\item Til, a type-directed compiler for ML (615 parseable files, totalling 222317 lines of code)\footnote{\url{http://www.cs.cornell.edu/Info/People/jgm/til.tar.Z}}
+\item MLton, an open-source, whole-program, optimizing SML compiler (853 parseable files, 168323 lines of code)\footnote{\url{http://sourceforge.net/projects/mlton/files/mlton/20130715/mlton-20130715.src.tgz/download}}
 \end{enumerate}
 
 The layout of this paper is as follow.
@@ -190,7 +190,7 @@ wrap at 80 columns. \cite{Cmu12}
 \begin{tabular}{|l||c|c||c|c|}
 \hline
 Project & Tab violations & Lines per instance & Column violations & Lines per instance \\ \hline\hline
-SML/NJ & 23115 & 3.5096 & 350 & 231.78 \\
+SML/NJ & 23115 & 3.5086 & 350 & 231.72 \\
 MLKit & 184554 & 2.8736 & 18170 & 29.187 \\
 FoxNet & 2861 & 2.9867 & 31 & 275.65 \\
 Til & 78494 & 2.8323 & 1380 & 161.10 \\
@@ -255,7 +255,7 @@ in more concise forms.
 \centering
 \begin{tabular}{|l||c|c||>{\centering\arraybackslash\hspace{0pt}}p{1in}|c|}\hline
 Project & \texttt{if} violations & Lines per instance & Missed fold opportunities & Lines per instance \\ \hline\hline
-SML/NJ & 25 & 3245.0 & 75 & 1081.7 \\
+SML/NJ & 25 & 3244.1 & 75 & 1081.4 \\
 MLKit & 182 & 2913.9 & 1470 & 360.77 \\
 FoxNet & 0 & -- & 10 & 854.50 \\
 Til & 149 & 1492.1 & 751 & 296.03 \\
@@ -312,18 +312,6 @@ rewrite as:
 \begin{verbatim}
 fun find = List.exists (fn x => x = index_n2)
 \end{verbatim}
-\item \begin{verbatim}
-fun find [] = raise NotFound
-  | find ((tv',ty)::rest) = if eqTyvar(tv,tv') then ty
-                            else find rest
-\end{verbatim}
-
-rewrite as:
-\begin{verbatim}
-fun find = List.foldl
-             (fn ((tv',ty),f) => if eqTyvar(tv,tv') then ty else f tv)
-             (fn _ => raise NotFound)
-\end{verbatim}
 \end{enumerate}
 \caption{Rewriting explicit recursion with library functions}
 \label{figure:fold}
@@ -336,26 +324,27 @@ rewriting a function as a fold over a list can be much more challenging.
 And when a fold is not obvious, the programmer is surely tempted to just
 get the job done with a recursive function definition.
 
-Few fold opportunities were very obvious, for example, Figure~\ref{figure:fold} example 1.
-Indeed, we did not find many fold opportunities of this variety.
+A good number of fold opportunities were very obvious, for example,
+Figure~\ref{figure:fold} example 1. However, sometimes,
+unlike the example shown, the expressions contained shortcircuiting
+\texttt{orelse} or \texttt{andalso} subexpressions that provide
+a potential boost to efficiency.
 
 Sometimes, the recursive function can be rewritten in terms of another library function
 from the \texttt{List} structure, which itself could be written as fold.
-Figure~\ref{figure:fold} example 2 shows an example that can be rewritten with \texttt{find}.
+Figure~\ref{figure:fold} example 2 shows an example that can be rewritten with \texttt{exists}.
 
-The transformation to a fold can be particularly challenging when the recursive function
-has an accumulating parameter, but as \cite{Jeu13} points out,
-when we consider the function as returning a function that takes a parameter
-instead of having an accumulating parameter, the transformation to a fold
-can be easier. An example of this type is shown in Figure~\ref{figure:fold} example 3.
-Many recursive functions with side-effects can be rewritten in this manner.
-
-The fact that a small fraction of the missed fold opportunities were obvious
-suggests that the expert coders were actively trying to rewrite their
-recursive functions using folds or other library functions on lists. The
-cases where they did not convert such explicit recursion into folds
-were either missed or perhaps left in their recursive form for other
-reason of legibility.
+As we will see in Section~\ref{subsec:list}, folds occur quite often in
+expert code, more often than the missed opportunities we were able to find.
+That there are still a good number of unutilized fold opportunities
+suggests that they were overlooked by their authors, 
+were left in place for a specific stylistic choice, or
+written in explicit recursive form for reasons of efficiency.
+As noted, efficiency is clearly a factor in many of the cases.
+For the remaining cases, since the equivalent fold does not
+look very complicated, we find it to be more likely that they were
+indeed missed opportunities, suggesting that even expert
+coders sometimes struggle to 
 \subsection{Final thoughts on style}\label{subsec:stylethoughts}
 We conclude this section with a few thoughts on style.
 The takeaway for beginners from this section should not be
@@ -428,7 +417,7 @@ We therefore recommend that beginners avoid using \texttt{while} loops completel
 \begin{tabular}{|l||c|c|}
 \hline
 Project & Instances of expression lists & Lines per instance \\ \hline\hline
-SML/NJ & 1970 & 41.18 \\ 
+SML/NJ & 1970 & 41.17 \\ 
 MLKit & 7900 & 67.13 \\
 FoxNet & 77 & 111.0 \\
 Til & 4414 & 50.37 \\
@@ -470,7 +459,7 @@ Imperative features are clearly unavoidable as evidenced in expert ML code. The 
 limit their uses of expression lists to a few general cases, mostly dominated by I/O.
 We conclude that the ML experts believe in the ``functional, side-effect-free'' style
 and conform to it as much as possible. Beginners in ML are encouraged for follow their example.
-\subsection{List Library Functions}\label{subsec:imp}
+\subsection{List Library Functions}\label{subsec:list}
 We wanted to see if there was any discernable pattern in how expert programmers
 used library functions, but not all projects require the same library.
 It is difficult to imagine writing a substantial amount of code in ML without
@@ -506,7 +495,7 @@ folds (\texttt{foldl},\texttt{foldr}) & \textbf{237} (89,\textbf{148}) & \textbf
 \texttt{take} & 6 & 130 & 0 & 10 & 23 \\
 \texttt{tl} & 54 & 200 & 0 & \textbf{505} & 63 \\\hline\hline
 Total & 2904 & 21812 & 213 & 7832 & 4163 \\
-Lines per call & 27.935 & 24.314 & 40.117 & 28.386 & 40.433 \\\hline
+Lines per call & 27.928 & 24.314 & 40.117 & 28.386 & 40.433 \\\hline
 \end{tabular}
 \caption{Calls to functions from the \texttt{List} structure (\texttt{concat} omitted). Bolded entries each account for more than 5\% of the total number of occurrences.}
 \label{table:list}
@@ -547,7 +536,7 @@ Finally, we point out that the Til project makes heavy use of the head (\texttt{
 functions which respectively return the first element and all but the first element in a list.
 That no other project makes heavy use of these two functions is interesting because from
 the author's experience, extracting the head and tail of a list is a frequent necessity.
-It is likely that the other four projects make heavy use of pattern matching on a cons cell (e.g., \texttt{x :: xs})
+It is likely that the other four projects make heavy use of pattern matching on a cons cell (e.g., \texttt{x ::\ xs})
 instead of expliciting call either \texttt{hd} or \texttt{tl}.
 
 To conclude this section, we recommend to beginners to make heavy use of library functions
@@ -556,8 +545,71 @@ And despite our criticism of missed fold opportunities, folds are also quite com
 Based on a preference by coders on four of five projects, we recommend using pattern
 matching to extract the head and tail of a list instead of explicit function calls.
 \subsection{Program Hierarchy and Layout}\label{subsec:struct}
-\subsubsection{Modularity}\label{subsubsec:modularity}
-\subsubsection{Helper Functions in \texttt{Let} Expressions}\label{subsubsec:let}
+\subsubsection{Modularity and Abstraction}\label{subsubsec:modularity}
+Program modularity eases the burden of maintenance and refactoring.
+Abstraction provides a uniform interface, hides distracting implementation details,
+and conceals sensitive information. With ML's module system, we can achieve
+abtraction and modularity by using structures, signatures, and functors.
+
+\begin{table}[h!]
+\centering
+\begin{tabular}{|l||>{\centering\arraybackslash}p{1.5in}|c||>{\centering\arraybackslash}p{1.5in}|c|}
+\hline
+Project & Files with module declarations & Fraction & Files with only module declarations & Fraction \\ \hline\hline
+SML/NJ & 297 & 0.99 & 297 & 0.99 \\
+MLKit & 1442 & 0.63 & 1590 & 0.70 \\
+Foxnet & 29 & 0.39 & 31 & 0.42 \\
+Til & 466 & 0.76 & 477 & 0.78 \\
+MLton & 484 & 0.57 & 576 & 0.68 \\ \hline
+\end{tabular}
+\caption{Proportion of files that, at top level, contain module declarations or only contain module declarations.}
+\label{table:module}
+\end{table}
+
+Table~\ref{table:module} shows what fraction of files define a structure, signature, or functor at top level
+and what fraction of files define only a structure, signature, or functor at top level.
+We find that in larger projects, more than half of all files contain only structure, signature, or functor
+definitions at top level. And in the larger projects, we see that an even higher fraction 
+of files (from almost 70\% to 99\%) have at least one such definition at top level.
+The smaller Foxnet project stands out as having a smaller fraction in both cases.
+
+We believe that these data reflect that as projects get large, expert ML coders
+make heavy use of the ML module system to help manage the complexity.
+Due to the heavy reliance on the ML module system (in the case of SML/NJ, all
+but two files have anything other than a functor, signature, or structure definition
+at top level), we suggest that beginners make heavy use of the ML module system
+to impart modularity and some level of abstraction to the their, particularly
+when the projects they are working on grow in size.
+\subsubsection{Helper Functions in \texttt{let} Expressions and \texttt{local} Declarations}\label{subsubsec:let}
+Helper functions allow programmers to refer to reoccurring code by name.
+They can also help make the code more readable by giving complicated
+lambda expressions a helpful name. We might consider looking at
+how frequently our expert examples employ helper functions. Sadly,
+we cannot infer from the name of a function or its body whether or not
+a function is a helper function. But if a function appears inside
+the list of declarations in a \texttt{let} expression or a \texttt{local}
+declaration, one might hypothesize that it is likely a helper function
+of some sort, since it is limited in scope to the body of the \texttt{let}
+or \texttt{local} construction.
+
+\begin{table}[h!]
+\centering
+\begin{tabular}{|l||>{\centering\arraybackslash}p{1.2in}|>{\centering\arraybackslash}p{1.2in}|c||>{\centering\arraybackslash}p{1.2in}|c|}
+\hline
+Project & Function declarations in \texttt{let} & Function declarations in \texttt{local} & Sum & Total Function Declarations & Fraction \\ \hline\hline
+SML/NJ & 2652 & 192 & 2844 & 4866 & 0.58 \\
+MLKit & 12466 & 6417 & 18883 & 28267 & 0.67 \\
+Foxnet & 103 & 19 & 122 & 532 & 0.23 \\
+Til & 4431 & 719 & 5150 & 15455 & 0.33 \\
+MLton & 2837 & 719 & 3556 & 10842 & 0.33 \\\hline
+\end{tabular}
+\caption{Functions declared inside of \texttt{let} expressions}
+\label{table:funlet}
+\end{table}
+
+Table~\ref{table:funlet} shows how functions are declared in side of \texttt{let} or \texttt{local}
+constructs, and what fraction that represents out of all function declarations in the
+entire project.
 \section{IMPLEMENTATION}\label{sec:impl}
 \section{CONCLUSIONS AND FUTURE WORK}\label{sec:future}
 \begin{thebibliography}{99}

@@ -49,8 +49,16 @@ signature PARSEFILE = sig
   (* Given an AST, returns a list of all names of variables in functions *)
   val getAppVars : Ast.dec -> string list
 
-  (* Given a parsetree, find the top level declaration *)
+  (* Given a parse tree, find the top level declaration *)
   val getTopLevelDec : Ast.dec -> Ast.dec list
+
+  (* Given a parse tree, are the top level decs only signatures, structures,
+   * functors, opens, or locals. *)
+  val isTopLevelOnlyModule : Ast.dec -> bool
+
+  (* Given a parse tree, does the top level contain a signature, structure,
+   * or functor. *)
+  val topLevelHasModule : Ast.dec -> bool
 
   (* For a given parse tree, look at the declarations by level
    * Specifically, we're looking for fun, val, and struct decs *)
@@ -474,12 +482,37 @@ structure ParseFile :> PARSEFILE = struct
   (* see signature *)
   fun getTopLevelDec (A.MarkDec (d, _)) = getTopLevelDec d
     | getTopLevelDec (A.SeqDec decs) = L.concat (map getTopLevelDec decs)
+    | getTopLevelDec (A.LocalDec (_, body)) = getTopLevelDec body
     | getTopLevelDec d = [d]
 
   (* see signature *)
-  fun mergeCounters ((_, a), b) =
-    List.foldl (fn ((x, i), acc) => Counter.increment x i acc) b a
+  fun isTopLevelOnlyModule parseTree =
+    let
+      val decs = getTopLevelDec parseTree
+    in
+      List.all
+        (fn d =>
+          (case AstType.decToDecType d of
+             AstType.SIGDEC => true
+           | AstType.FCTDEC => true
+           | AstType.STRDEC => true
+           | AstType.OPENDEC => true
+           | _ => false)) decs
+    end
 
+  (* see signature *)
+  fun topLevelHasModule parseTree =
+    let
+      val decs = getTopLevelDec parseTree
+    in
+      List.exists
+        (fn d =>
+          (case AstType.decToDecType d of
+             AstType.SIGDEC => true
+           | AstType.STRDEC => true
+           | AstType.FCTDEC => true
+           | _ => false)) decs
+    end
 
   (* levelTraverseDecs takes functions f & g, a level accumulator, a
    * accumulating counter, and a parse tree. For each declaration
