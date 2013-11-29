@@ -85,7 +85,7 @@ do not necessarily know what features identify them as experts and what features
 
 We attempt to shed light onto this problem by employing software metrics,
 by trying to find measureable quantities
-that provide some metric for evaluating software. Specifically,
+that provide some metric for qualifying expert code. Specifically,
 We approach this problem by examining source code written by experts.
 
 For samples of expert code, we turned to prominent projects where the source code is readily available:
@@ -104,27 +104,27 @@ We look at how well expert code conforms to readily available
 style guides in section~\ref{sec:style}.
 Section~\ref{sec:syntax} discusses an analysis
 of the distribution of syntactic forms.
-The implementation is discussed
-in section~\ref{sec:impl}. Finally, we conclude and reflect in section~\ref{sec:future}.
+Finally, we conclude and reflect in section~\ref{sec:future}.
 \section{SOFTWARE METRICS AND SOURCE CODE ANALYSIS}\label{sec:metric}
 \subsection{SOFTWARE METRICS}
 One way to tackle the challenges and complexities of software development is to employ
 \emph{software metrics}. These metrics allow developers and their managers to make
 measurements about cost and effort, productivity, assessment of reliability and
 quality, evaluating processes (including development and maintenance), and elements
-related to project and product management.\cite{Ord08} Despite being around since
+related to project and product management \cite{Ord08}. Despite being around since
 the early 1970s, there are still some significant issues with how measurements
 about software are made in practice and serious criticisms about whether or not the metrics
-measure anything useful (see for example \cite{Jon94} and \cite{Bou12}).
+measure anything useful (for example, see: \cite{Jon94} and \cite{Bou12}).
 Nevertheless, due to the high potential of prudent measurements,
 a growing number of organizations have integrated software measurement programs into
-their workflows.\cite{Ord08}
+their workflows \cite{Ord08}.
 
 For our project, the whole of software metrics is too monolithic to employ on
 such a small-scale project. Therefore, we aim to look at a more specific set of measurements,
-mostly dealing with style. This approach has been used for C++\cite{Aye98} and C\cite{Tak11}.
+mostly dealing with style. This approach has been used for C++ \cite{Aye98} and C \cite{Tak11}.
 \subsection{SOURCE CODE ANALYSIS}
-\cite{Bin07} provides a definition:
+In an effort to understand what good code looks like, we analyze source code
+written by experts. \cite{Bin07} provides a definition:
 \begin{quote}
 \emph{Source code analysis} is the process of extracting
 information about a program from its source code
@@ -142,16 +142,16 @@ control-flow graphs, and call graphs.
 
 Source code analysis has a variety of applications in such areas as
 automotive software engineering, debugging, fault location, software maintenance,
-etc.\cite{Bin07}
+etc \cite{Bin07}.
 
 We use the parser of the Standard ML of New Jersey compiler along with the accompanying
-abstract syntax tree that it produces to perform our analyses. Our analysis
+abstract syntax tree that it produces. Our analysis
 consists of static analyses of the abstract syntax tree, looking for
 syntactic constructs and patterns in usage.
 \section{STYLE}\label{sec:style}
 \subsection{Style Guides}\label{subsec:guide}
 If we wish to examine how well expert code conforms to style, we need to decide
-what good style is. A quick search of the web found a few style guides, from which
+what good style is. A quick search of the web yielded three style guides, from which
 we will distill a few points of style to examine in the expert code:
 \begin{enumerate}
 \item CS312 SML Style Guide, from Cornell\footnote{\url{http://www.cs.cornell.edu/courses/cs312/2008sp/handouts/style.htm}}
@@ -163,11 +163,11 @@ Let's take a look at what we can discover.
 If one wishes to start a flame war on StackOverflow, one simply needs to start
 a debate over spaces and tabs. The three style guides, nevertheless, are
 united on the view that tabs are taboo in SML code. To paraphrase the CMU
-style guide, white space should emphasize the structure of the code.\cite{Cmu12}
+style guide, white space should emphasize the structure of the code \cite{Cmu12}.
 Tabs, which are potentially rendered differently for
 different users, cannot be used to consistently provide the desired indentation.
 For some users, this ability to customize the size of tabs is an asset not
-a drawback.
+a drawback. These two view points generally underlie all ``debates'' concerning spaces versus tabs.
 
 We can see from Table~\ref{table:whitespace} that most expert code definitely does
 not conform to the tab/spaces rule -- we see a tab character approximately once every third line.
@@ -183,7 +183,7 @@ a potentially helpful observation we can pass on to beginner coders.
 \subsection{The 80-Column Rule}\label{subsec:80}
 All three style guides recommend a line of code should not exceed 80 columns.
 The 80-column rule is a UNIX convention and many text editors automatically
-wrap at 80 columns. \cite{Cmu12}
+wrap at 80 columns \cite{Cmu12}.
 
 \begin{table}[t!]
 \centering
@@ -207,10 +207,15 @@ at the violations shows that most of the cases consist of exceeing the limit
 by only a few characters. While most editors can be configured to insert
 spaces in place of tabs, there is no active check on enforcing the 80-column
 rule while coders are working.
-Indeed, MLton contains many width violations in spite of what is stated in the style guide.
+Indeed, MLton contains many width violations in spite of what is stated in their style guide.
 Since the level of indentation does more to highlight the structure of code than
 limiting the width of text does, it is perhaps not surprising that more
 emphasis was placed on eliminating tabs than on observing the 80-column rule.
+
+Since all three style guides recommend using the 80-column rule, we recommend it
+also to beginners. In addition, to help conformity, we recommend they make
+regularly checks to see how well they are adhering to the rule because
+violations are easily noticed as one is writing code.
 \subsection{Verbosity in \texttt{if} Expressions}
 A convention cited in the Cornell style guide is that we should use \texttt{if}
 expressions wisely. There are two specific uses of \texttt{if} that we
@@ -222,8 +227,7 @@ chose as violations.
 Rewriting these cases should help to improve readability and reduce verbosity in the code.
 
 Table~\ref{table:style} shows the frequency of \texttt{if} violations in the five projects we selected.
-There do not seem to be many violations -- on average approximately one every couple of thousand lines --
-but they do still occur.
+There do not seem to be many violations -- on average approximately one every couple of thousand lines.
 On inspection, the violations tend to fall into two groups: most are
 missed opportunities to rewrite the \texttt{if} statement in potentially simpler way; 
 a few are made up of complicated \texttt{if} expressions where rewriting may not improve readability at all.
@@ -272,7 +276,10 @@ that library functions for lists were frequent missed opportunities. We
 chose to look at the \texttt{List} structure from the basis. Since many of the functions
 from this structure, for example, \texttt{map}, \texttt{exists}, \texttt{all}, \texttt{filter},
 and \texttt{rev}, can be written in terms of a fold over a list, we decided to look
-for missed opportunities to apply a fold. \cite{Jeu13} describes an algorithm for turning
+for missed opportunities to apply a fold. \cite{Jeu13} 
+states that using higher order recursion schemes like a fold can allow a program
+to benefit from shortcut fusion, and they
+describe an algorithm for turning
 explicitly recursive functions into folds. We chose not to tackle the more challenging
 problem of finding all fold opportunities or transforming them,
 but instead chose to look for a specific subset where folds might be applied.
@@ -291,6 +298,13 @@ behavior from being introduced into an otherwise sound definition by structural 
 We won't concern ourselves with the order of the pattern match because either the patterns
 are mutually exclusive (e.g., \texttt{[]} or a cons cell) or there is a redundant match
 and the compiler will throw an error.
+
+We see from Table~\ref{table:style} that missed opportunities for fold occur more often
+than opportunities to rewrite \texttt{if} expressions. Perhaps this is
+because \texttt{if} statements are relatively easy to reason about, but
+rewriting a function as a fold over a list can be much more challenging.
+And when a fold is not obvious, the programmer is surely tempted to just
+get the job done with a recursive function definition.
 
 \begin{figure}[h!]
 \begin{enumerate}
@@ -317,13 +331,6 @@ fun find = List.exists (fn x => x = index_n2)
 \label{figure:fold}
 \end{figure}
 
-We see from Table~\ref{table:style} that missed opportunities for fold occur more often
-than opportunities to rewrite \texttt{if} expressions. Perhaps this is
-because \texttt{if} statements are relatively easy to reason about, but
-rewriting a function as a fold over a list can be much more challenging.
-And when a fold is not obvious, the programmer is surely tempted to just
-get the job done with a recursive function definition.
-
 A good number of fold opportunities were very obvious, for example,
 Figure~\ref{figure:fold} example 1. However, sometimes,
 unlike the example shown, the expressions contained shortcircuiting
@@ -344,7 +351,12 @@ As noted, efficiency is clearly a factor in many of the cases.
 For the remaining cases, since the equivalent fold does not
 look very complicated, we find it to be more likely that they were
 indeed missed opportunities, suggesting that even expert
-coders sometimes struggle to 
+coders sometimes struggle with folds.
+
+Based on the potential advantages of using a fold, beginners
+are encouraged to use folds. Based on the work of the experts,
+it is quite easy to miss an opportunity to use a fold, so
+beginners should remain vigilant for these opportunities.
 \subsection{Final thoughts on style}\label{subsec:stylethoughts}
 We conclude this section with a few thoughts on style.
 The takeaway for beginners from this section should not be
@@ -353,7 +365,7 @@ style is not important. On the contrary, we believe that
 these errors reflect the challenges that even experts
 struggle with in the code, both in identifying places
 whether style violations occur and finding consensus on
-what good style is. Our suggestion to the beginners is
+what good style is. Our suggestion to beginners is to
 remember style's purpose of making code easier to read
 and maintain, and then being as consistent as possible
 in applying the style of his or her choice.
@@ -363,7 +375,7 @@ In Prof. Norman Ramsey's class on programming languages, one easy way to lose po
 on any assignment was the unnecessary use \emph{imperative} language features when programming in a \emph{functional} language.
 \footnote{See, for example: \url{http://www.cs.tufts.edu/comp/105-2013s/homework/scheme.html}, specifically, the section titled ``Dire Warnings''}
 In Standard ML, there are two main imperative constructs in terms of expressions:
-(1)~the \texttt{while} expression and (2)~a list of expression separated by semicolons (similar to the \texttt{begin...end} syntax of Pascal)\cite{Ull98}.
+(1)~the \texttt{while} expression and (2)~a list of expression separated by semicolons (similar to the \texttt{begin...end} syntax of Pascal) \cite{Ull98}.
 The former has the form \texttt{while <boolean-expression> do <expression>} and always returns a value of unit type.
 The return value indicates that the \texttt{while} expression's purpose is to produce the side-effects associated
 with the expression in its body. The sequence of expressions evaluates only to the last in that sequence, indicating
@@ -371,7 +383,7 @@ in a similar fashion, that all expressions in the list except for the last are e
 
 Of course, one of the paradigms in writing functional programs is to avoid side-effects.
 Such a principled approach allows us to reason better about correctness and
-removes the constraints imposed by having a fixed order of execution.\cite{Hug90} Therefore,
+removes the constraints imposed by having a fixed order of execution \cite{Hug90}. Therefore,
 it behooves us to examine whether such imperative features are necessary or avoidable.
 \subsubsection{Expressions with \texttt{while}}
 \begin{table}[h!]
@@ -399,14 +411,14 @@ also in MLton's benchmarks suite.
 
 Of the 104 instances of a \texttt{while} expression in the Til project,
 only 2 of these were found outside of a source file used for regression or benchmark testing.
-In both instances, the body of the while loop includes modifying a mutable reference, which justifies the use of
+In both instances, the body of the \texttt{while} loop includes modifying a mutable reference, which justifies the use of
 an imperative feature. Getting rid of the while loops requires a design of how the code works so
 that we no longer need to keep track of mutable state and thus, is not very straightforward.
 
 Overall, we can observe that there are very few usages of \texttt{while} expressions
-in expert projects (on average, one occurrence per about 2000 lines of code).
-When code used for testing is excluded from the analysis, we found only one use
-of a \texttt{while} expression which was used to modify mutable data.
+in expert projects. 
+When code used for testing is excluded from the analysis, we found only two uses
+of \texttt{while} expressions, which were used to modify mutable data.
 From the analysis, expert ML programmers seemed quite principled in avoiding imperative
 elements of ML. This is perhaps not surprising since they could have chosen
 to implement in any language but selected a functional language in the end.
@@ -447,7 +459,7 @@ the expression lists frequently occur in the following contexts:
 \item[$\bullet$] with the keyword \texttt{use} or the compilation manager to bring in other modules
 \end{itemize}
 
-Haskell has the IO monad to allow users to perform I/O in a purely functional way. \cite{Jon93}
+Haskell has the IO monad to allow users to perform I/O in a purely functional way \cite{Jon93}.
 Standard ML does not, so users are left to perform their
 I/O unsafely in imperative fashion.
 
@@ -463,12 +475,12 @@ and conform to it as much as possible. Beginners in ML are encouraged for follow
 We wanted to see if there was any discernable pattern in how expert programmers
 used library functions, but not all projects require the same library.
 It is difficult to imagine writing a substantial amount of code in ML without
-relying heavily on lists, so we decided to just examine how expert programmer relied upon the functions
+relying heavily on lists, so we decided to just examine how expert programmers relied upon the functions
 in the \texttt{List} structure from the standard basis.
 
 \begin{table}[h!]
 \centering
-\begin{tabular}{|l||>{\centering\arraybackslash}p{0.62in}|>{\centering\arraybackslash\hspace{0pt}}p{0.9in}|>{\centering\arraybackslash\hspace{0pt}}p{0.6in}|>{\centering\arraybackslash\hspace{0pt}}p{0.5in}|>{\centering\arraybackslash\hspace{0pt}}p{0.6in}|}
+\begin{tabular}{|p{1in}||>{\centering\arraybackslash}p{0.62in}|>{\centering\arraybackslash\hspace{0pt}}p{0.9in}|>{\centering\arraybackslash\hspace{0pt}}p{0.6in}|>{\centering\arraybackslash\hspace{0pt}}p{0.5in}|>{\centering\arraybackslash\hspace{0pt}}p{0.6in}|}
 \hline
 Function & SML/NJ & MLKit & Foxnet & Til & MLton \\ \hline\hline
 \texttt{::} & 882 & 10250 & 97 & 2496 & 1585 \\
@@ -479,7 +491,7 @@ Function & SML/NJ & MLKit & Foxnet & Til & MLton \\ \hline\hline
 \texttt{exists} & 24 &  598 & 0 & \textbf{542} & 152 \\
 \texttt{filter} & 17 & 236 & 3 & 62 & 45 \\
 \texttt{find} & 48 & 258 & 0 & 64 & 48 \\
-folds (\texttt{foldl},\texttt{foldr}) & \textbf{237} (89,\textbf{148}) & \textbf{1220} (680,540) & \textbf{15} (7,8) & 75 (61,14) & 205 (129,76) \\
+folds\hspace{2in}(\texttt{foldl},\texttt{foldr}) & \textbf{237} (89,\textbf{148}) & \textbf{1220} (680,540) & \textbf{15}\hspace{1in}(7,8) & 75 (61,14) & 205 (129,76) \\
 \texttt{getItem} & 0 & 64 & 0 & 0 & 5 \\
 \texttt{hd} & 42 & 130 & 0 & \textbf{413} & 59 \\
 \texttt{last} & 8 & 116 & 0 & 198 & 48 \\
@@ -497,17 +509,17 @@ folds (\texttt{foldl},\texttt{foldr}) & \textbf{237} (89,\textbf{148}) & \textbf
 Total & 2904 & 21812 & 213 & 7832 & 4163 \\
 Lines per call & 27.928 & 24.314 & 40.117 & 28.386 & 40.433 \\\hline
 \end{tabular}
-\caption{Calls to functions from the \texttt{List} structure (\texttt{concat} omitted). Bolded entries each account for more than 5\% of the total number of occurrences.}
+\caption{Calls to functions from the \texttt{List} structure (\texttt{concat} omitted). Bolded entries each account for more than 5\% of the total number of occurrences in a project.}
 \label{table:list}
 \end{table}
 
-Before we analyze the data, we should highlight some salient points.
+Before we discuss the analysis, we should highlight some salient points.
 Since the easiest way to create lists of arbitrary size is to the use the cons operator (\texttt{::}),
 this operator naturally occurs the most, accounting for, in some cases, up to almost half
 the occurrences of function calls. But we don't gain much insight from looking at this operator
 because it is so common and critical to working with lists. It should also be noted
 that we are excluding any occurrences of the cons operator used in pattern matching.
-Additionally, we had trouble distinguishing \texttt{concat} using from the \texttt{List} structure
+Additionally, we had trouble distinguishing uses of \texttt{concat} from the \texttt{List} structure
 as opposed to the \texttt{String} structure. As a result, the occurrences of \texttt{concat} have been omitted.
 Our results are tabulated in Table~\ref{table:list}.
 
@@ -578,7 +590,7 @@ make heavy use of the ML module system to help manage the complexity.
 Due to the heavy reliance on the ML module system (in the case of SML/NJ, all
 but two files have anything other than a functor, signature, or structure definition
 at top level), we suggest that beginners make heavy use of the ML module system
-to impart modularity and some level of abstraction to the their, particularly
+to impart modularity and some level of abstraction to their work, particularly
 when the projects they are working on grow in size.
 \subsubsection{Helper Functions in \texttt{let} Expressions and \texttt{local} Declarations}\label{subsubsec:let}
 Helper functions allow programmers to refer to reoccurring code by name.
@@ -610,8 +622,34 @@ MLton & 2837 & 719 & 3556 & 10842 & 0.33 \\\hline
 Table~\ref{table:funlet} shows how functions are declared in side of \texttt{let} or \texttt{local}
 constructs, and what fraction that represents out of all function declarations in the
 entire project.
-\section{IMPLEMENTATION}\label{sec:impl}
-\section{CONCLUSIONS AND FUTURE WORK}\label{sec:future}
+In the larger four projects, one-third to two-thirds of all function declarations occur
+inside of a local or a let binding. As argued above, these are likely to be helper functions.
+In other words, the experts are quite fond of helper functions, most likely for
+the reasons we previously mentioned. Beginners are encouraged for follow their example.
+\section{CONCLUSIONS}\label{sec:future}
+In this project, we've tried to find meaningful measurements of aspects of expert ML code
+and then distill from these recommendations some concept of what good code
+looks like.
+
+We found that good style is, not surprisingly, subjective yet
+difficult to conform to at the same time -- even when we can't find consensus on good,
+we can find out the bad. In the end, we evaluated how well expert coders
+conformed to a style rule if they followed it at all. We find that the authors
+of the expert ML projects we looked at generally have a consistent style
+but occassionally stray from it.
+
+The other aspect we examined was how selected syntactic features in ML were used
+by the experts. Specifically, we looked at library functions, functional strictness,
+modularity, and the use of helper functions. In general, the expert projects
+demonstrated with their fingers that they very much believe in their stated principles.
+
+We find expert ML coders to be similar to one another in the aspects we looked at,
+and we suspect that looking at other features will lead to similar results. But that
+will need to be confirmed with additional work. Still, that the experts' code
+share common features suggests that what is shared is a common thread of
+expertise. Thus, beginners in ML are highly encouraged to think about the features
+highlighted in this project and use them to shape their work as they continue
+their journey from novicedom to the world of experts.
 \begin{thebibliography}{99}
 \bibitem[Ayerbe and Vazquez 1998]{Aye98} Ayerbe, A., Vazquez, I. (1998) Software Products Quality Improvement with a Programming Style Guide and a Measurement Process. In \emph{Proceedings 22nd Annual International Computer Software and Applications Conference (COMPSAC'98)}. 172--178.
 \bibitem[Binkley 2007]{Bin07} Binkley, D., 2007. Source Code Analysis: A Road Map. In \emph{Workshop on the Future of Software Engineering (FOSE'07)}. Minneapolis, MN. 104--119. Washington, D.C.: IEEE Computer Society.
