@@ -229,7 +229,7 @@ Rewriting these cases should help to improve readability and reduce verbosity in
 Table~\ref{table:style} shows the frequency of \texttt{if} violations in the five projects we selected.
 There do not seem to be many violations -- on average approximately one every couple of thousand lines.
 On inspection, the violations tend to fall into two groups: most are
-missed opportunities to rewrite the \texttt{if} statement in potentially simpler way; 
+missed opportunities to rewrite the \texttt{if} statement in potentially simpler way;
 a few are made up of complicated \texttt{if} expressions where rewriting may not improve readability at all.
 The first example below shows a \texttt{if} expression that could be rewritten as \texttt{e = t orelse f r}.
 In the second case, the use of \texttt{orelse} does not significantly improve the readability or conciseness
@@ -276,7 +276,7 @@ that library functions for lists were frequent missed opportunities. We
 chose to look at the \texttt{List} structure from the basis. Since many of the functions
 from this structure, for example, \texttt{map}, \texttt{exists}, \texttt{all}, \texttt{filter},
 and \texttt{rev}, can be written in terms of a fold over a list, we decided to look
-for missed opportunities to apply a fold. \cite{Jeu13} 
+for missed opportunities to apply a fold. \cite{Jeu13}
 states that using higher order recursion schemes like a fold can allow a program
 to benefit from shortcut fusion, and they
 describe an algorithm for turning
@@ -344,7 +344,7 @@ Figure~\ref{figure:fold} example 2 shows an example that can be rewritten with \
 As we will see in Section~\ref{subsec:list}, folds occur quite often in
 expert code, more often than the missed opportunities we were able to find.
 That there are still a good number of unutilized fold opportunities
-suggests that they were overlooked by their authors, 
+suggests that they were overlooked by their authors,
 were left in place for a specific stylistic choice, or
 written in explicit recursive form for reasons of efficiency.
 As noted, efficiency is clearly a factor in many of the cases.
@@ -392,7 +392,7 @@ it behooves us to examine whether such imperative features are necessary or avoi
 \hline
 Project & \multicolumn{2}{c||}{Instances of \texttt{while}} & \multicolumn{2}{c|}{Lines per instance} \\ \cline{2-3}\cline{4-5}
  & total & outside of tests & total & outside of tests \\ \hline\hline
-SML/NJ & 0 & 0 & -- & --\\ 
+SML/NJ & 0 & 0 & -- & --\\
 MLKit & 18 & 0 & 29463 & --\\
 FoxNet & 0 & 0 & -- & -- \\
 Til & 104 & 2 & 2137.66 & 11158.5 \\
@@ -416,7 +416,7 @@ an imperative feature. Getting rid of the while loops requires a design of how t
 that we no longer need to keep track of mutable state and thus, is not very straightforward.
 
 Overall, we can observe that there are very few usages of \texttt{while} expressions
-in expert projects. 
+in expert projects.
 When code used for testing is excluded from the analysis, we found only two uses
 of \texttt{while} expressions, which were used to modify mutable data.
 From the analysis, expert ML programmers seemed quite principled in avoiding imperative
@@ -429,7 +429,7 @@ We therefore recommend that beginners avoid using \texttt{while} loops completel
 \begin{tabular}{|l||c|c|}
 \hline
 Project & Instances of expression lists & Lines per instance \\ \hline\hline
-SML/NJ & 1970 & 41.17 \\ 
+SML/NJ & 1970 & 41.17 \\
 MLKit & 7900 & 67.13 \\
 FoxNet & 77 & 111.0 \\
 Til & 4414 & 50.37 \\
@@ -581,7 +581,7 @@ MLton & 484 & 0.57 & 576 & 0.68 \\ \hline
 Table~\ref{table:module} shows what fraction of files define a structure, signature, or functor at top level
 and what fraction of files define only a structure, signature, or functor at top level.
 We find that in larger projects, more than half of all files contain only structure, signature, or functor
-definitions at top level. And in the larger projects, we see that an even higher fraction 
+definitions at top level. And in the larger projects, we see that an even higher fraction
 of files (from almost 70\% to 99\%) have at least one such definition at top level.
 The smaller Foxnet project stands out as having a smaller fraction in both cases.
 
@@ -612,7 +612,7 @@ Project & Function declarations in \texttt{let} & Function declarations in \text
 SML/NJ & 2652 & 192 & 2844 & 4866 & 0.58 \\
 MLKit & 12466 & 6417 & 18883 & 28267 & 0.67 \\
 Foxnet & 103 & 19 & 122 & 532 & 0.23 \\
-Til & 4431 & 719 & 5150 & 15455 & 0.33 \\
+Til & 4431 & 6373 & 10804 & 15455 & 0.70 \\
 MLton & 2837 & 719 & 3556 & 10842 & 0.33 \\\hline
 \end{tabular}
 \caption{Functions declared inside of \texttt{let} expressions}
