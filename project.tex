@@ -74,7 +74,7 @@
 Beginners can become experts through directed practice towards a goal. In an effort to
 help them direct their practice, we make observations about what good ML code looks like.
 The aim of this paper is two-fold: (1)~identify features common to code written in Standard ML by experts and
-(2)~provide suggestions to help beginners model their code after expert code.
+(2)~provide suggestions to help novices model their code after expert code.
 \end{abstract}
 \section{INTRODUCTION}
 There are many ways to define what an expert is.
@@ -84,7 +84,7 @@ with specifics during these 10000 hours, what should we tell them? One challenge
 do not necessarily know what features identify them as experts and what features are unique to them as individuals.
 
 We attempt to shed light onto this problem by employing software metrics,
-by trying to find measureable quantities
+by trying to find measurable quantities
 that provide some metric for qualifying expert code. Specifically,
 We approach this problem by examining source code written by experts.
 
@@ -179,7 +179,7 @@ for indenting, perhaps it is not surprising that the tab/spaces
 rule from style guides is adopted by only a select group of coders.
 While we can't say that the experts choose one style over the other in accordance with
 any style guide, we can say that the experts are at least consistent, which is
-a potentially helpful observation we can pass on to beginner coders.
+a potentially helpful observation we can pass on to novice coders.
 \subsection{The 80-Column Rule}\label{subsec:80}
 All three style guides recommend a line of code should not exceed 80 columns.
 The 80-column rule is a UNIX convention and many text editors automatically
@@ -203,7 +203,7 @@ MLton & 0 & -- & 2884 & 58.364 \\ \hline
 The example code from the expert ML users we looked at clearly cannot
 resist violating the 80-column rule (Table~\ref{table:whitespace}), with
 those for MLKit being particularly egregious. A quick glance
-at the violations shows that most of the cases consist of exceeing the limit
+at the violations shows that most of the cases consist of exceeding the limit
 by only a few characters. While most editors can be configured to insert
 spaces in place of tabs, there is no active check on enforcing the 80-column
 rule while coders are working.
@@ -333,7 +333,7 @@ fun find = List.exists (fn x => x = index_n2)
 
 A good number of fold opportunities were very obvious, for example,
 Figure~\ref{figure:fold} example 1. However, sometimes,
-unlike the example shown, the expressions contained shortcircuiting
+unlike the example shown, the expressions contained short-circuiting
 \texttt{orelse} or \texttt{andalso} subexpressions that provide
 a potential boost to efficiency.
 
@@ -353,7 +353,7 @@ look very complicated, we find it to be more likely that they were
 indeed missed opportunities, suggesting that even expert
 coders sometimes struggle with folds.
 
-Based on the potential advantages of using a fold, beginners
+Based on the potential advantages of using a fold, novices
 are encouraged to use folds. Based on the work of the experts,
 it is quite easy to miss an opportunity to use a fold, so
 beginners should remain vigilant for these opportunities.
@@ -540,7 +540,7 @@ in bulk in a list with \texttt{app}. The \texttt{length} function's popularity s
 the cardinality of a list is often more important than its contents.
 
 The pair of fold functions, taken together, break the threshold on three of five projects.
-This is perhaps not surprising since a fold is an excellent way to aggregrate data in a list
+This is perhaps not surprising since a fold is an excellent way to aggregate data in a list
 into another value, possibly even another list. Indeed, many of the functions on lists
 including \texttt{map} and \texttt{length} could be rewritten using a fold.
 
@@ -549,7 +549,7 @@ functions which respectively return the first element and all but the first elem
 That no other project makes heavy use of these two functions is interesting because from
 the author's experience, extracting the head and tail of a list is a frequent necessity.
 It is likely that the other four projects make heavy use of pattern matching on a cons cell (e.g., \texttt{x ::\ xs})
-instead of expliciting call either \texttt{hd} or \texttt{tl}.
+instead of explicitly call either \texttt{hd} or \texttt{tl}.
 
 To conclude this section, we recommend to beginners to make heavy use of library functions
 for lists. The experts particularly seem to like the list mapping and list contentation operators.
@@ -626,30 +626,30 @@ In the larger four projects, one-third to two-thirds of all function declaration
 inside of a local or a let binding. As argued above, these are likely to be helper functions.
 In other words, the experts are quite fond of helper functions, most likely for
 the reasons we previously mentioned. Beginners are encouraged for follow their example.
-\section{CONCLUSIONS}\label{sec:future}
-In this project, we've tried to find meaningful measurements of aspects of expert ML code
-and then distill from these recommendations some concept of what good code
-looks like.
+\section{CONCLUSIONS AND CONTRIBUTIONS}\label{sec:future}
+The key contributions of this project are three-fold. First, we
+identified some features of ML expertise. These features are
+selected not based on what experts recommend but rather on how they
+write their own code.
 
-We found that good style is, not surprisingly, subjective yet
-difficult to conform to at the same time -- even when we can't find consensus on good,
-we can find out the bad. In the end, we evaluated how well expert coders
-conformed to a style rule if they followed it at all. We find that the authors
-of the expert ML projects we looked at generally have a consistent style
-but occassionally stray from it.
+Second, we've distilled some useful tips for novices based
+on our discoveries.
+\begin{enumerate}
+\item No consensus on tabs vs.\ spaces. Pick one and be consistent.
+\item Keep under 80 columns of text. Check often.
+\item Rewrite if expressions if one of the branches is a boolean literal or if the test is \texttt{not} applied a boolean expression
+\item Use folds when possible.
+\item Avoid while loops.
+\item Expression lists are OK for I/O.
+\item Use list library functions when possible.
+\item Use helper functions.
+\end{enumerate}
 
-The other aspect we examined was how selected syntactic features in ML were used
-by the experts. Specifically, we looked at library functions, functional strictness,
-modularity, and the use of helper functions. In general, the expert projects
-demonstrated with their fingers that they very much believe in their stated principles.
-
-We find expert ML coders to be similar to one another in the aspects we looked at,
-and we suspect that looking at other features will lead to similar results. But that
-will need to be confirmed with additional work. Still, that the experts' code
-share common features suggests that what is shared is a common thread of
-expertise. Thus, beginners in ML are highly encouraged to think about the features
-highlighted in this project and use them to shape their work as they continue
-their journey from novicedom to the world of experts.
+Finally, we've created a set of tools that programmer of all levels
+can use to evaluate how well they are performing on the above
+eight points. The primary audience is intended to be novices,
+who can receive feedback on how well the certain features
+of their code mirror those of experts.
 \begin{thebibliography}{99}
 \bibitem[Ayerbe and Vazquez 1998]{Aye98} Ayerbe, A., Vazquez, I. (1998) Software Products Quality Improvement with a Programming Style Guide and a Measurement Process. In \emph{Proceedings 22nd Annual International Computer Software and Applications Conference (COMPSAC'98)}. 172--178.
 \bibitem[Binkley 2007]{Bin07} Binkley, D., 2007. Source Code Analysis: A Road Map. In \emph{Workshop on the Future of Software Engineering (FOSE'07)}. Minneapolis, MN. 104--119. Washington, D.C.: IEEE Computer Society.
