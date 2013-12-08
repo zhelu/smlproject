@@ -68,6 +68,11 @@ signature MANYFILES = sig
   (* Given a list of files, get the FunDecs inside of lets *)
   val getFunsInsideLet : string list -> Ast.dec list
   val getFunsInsideLocal : string list -> Ast.dec list
+
+  (* Given a list of files, get all vals in one of the following forms:
+   *   val () = ...
+   *   val _ = ... *)
+  val getImperativeVals : string list -> Ast.dec list
 end
 
 structure ManyFiles :> MANYFILES = struct
@@ -204,7 +209,8 @@ structure ManyFiles :> MANYFILES = struct
           case e of
             SOME es =>
               if length
-                   (List.filter (fn (Ast.SeqExp xs) => length xs > 1) es) > 1
+                   (List.filter
+                     (fn (Ast.SeqExp xs) => length xs > 1 | _ => false) es) > 1
               then f :: acc
               else acc
           | NONE => acc
@@ -289,37 +295,40 @@ structure ManyFiles :> MANYFILES = struct
   fun getFunsInsideLet fileList =
     L.foldl
     (fn (f,a) =>
-       let
-         val letExps = parseFile f >= (ParseFile.findExp [AstType.LETEXP])
-       in
-         case letExps of
-           SOME es =>
-             a @
-             List.filter
-               (fn d => AstType.decToDecType d = AstType.FUNDEC)
-               (List.concat
-                 (map
-                   (fn (Ast.LetExp {dec = d,...}) =>
-                     ParseFile.getTopLevelDec d) es))
-         | NONE => a
-       end) [] fileList
+       (case parseFile f >= (ParseFile.findExp [AstType.LETEXP]) of
+          SOME es =>
+            a @
+            List.filter
+              (fn d => AstType.decToDecType d = AstType.FUNDEC)
+              (List.concat
+                (map
+                  (fn (Ast.LetExp {dec = d,...}) =>
+                     ParseFile.getTopLevelDec d
+                   | _ => let exception Impossible in raise Impossible end) es))
+        | NONE => a)) [] fileList
 
   (* see signature *)
   fun getFunsInsideLocal fileList =
     L.foldl
     (fn (f,a) =>
-       let
-         val localDecs = parseFile f >= (ParseFile.findDec [AstType.LOCALDEC])
-       in
-         case localDecs of
-           SOME ds =>
-             a @
-             List.filter
-               (fn d => AstType.decToDecType d = AstType.FUNDEC)
-               (List.concat
-                 (map
-                   (fn (Ast.LocalDec (d,_)) =>
-                     ParseFile.getTopLevelDec d) ds))
-         | NONE => a
-       end) [] fileList
+       (case parseFile f >= (ParseFile.findDec [AstType.LOCALDEC]) of
+          SOME ds =>
+            a @
+            List.filter
+              (fn d => AstType.decToDecType d = AstType.FUNDEC)
+              (List.concat
+                (map
+                  (fn (Ast.LocalDec (d,_)) =>
+                     ParseFile.getTopLevelDec d
+                   | _ => let exception Impossible in raise Impossible end) ds))
+        | NONE => a)) [] fileList
+
+  (* see signature *)
+  fun getImperativeVals fileList =
+    L.foldl
+      (fn (f,a) =>
+         (case parseFile f >= ParseFile.findImperativeVals of
+            SOME vs => a @ vs
+          | NONE => a)) [] fileList
+             
 end

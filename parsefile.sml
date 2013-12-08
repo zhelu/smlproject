@@ -79,6 +79,11 @@ signature PARSEFILE = sig
    * opportunity for a fold *)
   val findFoldOpportunity : Ast.dec -> Ast.dec list
 
+  (* Given a parse tree, find val declarations in one of these forms:
+   *   val () = ...
+   *   val _ = ... *)
+  val findImperativeVals : Ast.dec -> Ast.dec list
+
 end
 
 structure ParseFile :> PARSEFILE = struct
@@ -227,6 +232,7 @@ structure ParseFile :> PARSEFILE = struct
       (* Given an Ast.FunDec, extract the first clause *)
       fun findFirstClause (A.MarkFb (fb, _)) = findFirstClause fb
         | findFirstClause (A.Fb (clause::_, _)) = clause
+        | findFirstClause _ = let exception Impossible in raise Impossible end
       (* Given an Ast.Clause, extract the first pattern *)
       fun findPatterns (A.Clause {pats = ps,...}) = ps
       (* Pull the function name from the pattern using fixity *)
@@ -449,14 +455,16 @@ structure ParseFile :> PARSEFILE = struct
   fun getAppVars parseTree =
     let
       (* get all applications *)
-      val apps = map (fn (A.FlatAppExp items) => items)
+      val apps = map (fn (A.FlatAppExp items) => items
+                       | _ => let exception Impossible in raise Impossible end)
                        (findExp [T.FLATAPPEXP] parseTree)
       (* items in the fixitem *)
       val items = L.concat apps
       (* Get all VarExps used in function application *)
       val vars = L.filter (fn e => T.expToExpType e = T.VAREXP)
                    (map
-                     (fn ({item = A.MarkExp (e, _),region=_,fixity=_}) => e)
+                     (fn ({item = A.MarkExp (e, _),region=_,fixity=_}) => e
+                       | x => let exception Impossible in raise Impossible end)
                      items)
       (* Extract the symbol name (unqualified, i.e. structure info is
        * discarded) *)
@@ -827,5 +835,26 @@ structure ParseFile :> PARSEFILE = struct
             | NONE => false)
           end)
       fs
+    end
+
+  (* see signature *)
+  fun findImperativeVals parseTree =
+    let
+      val vs = findDec [AstType.VALDEC] parseTree
+      (* Given a pattern from a Ast.Vb, evaluates to true if pattern is unit
+       * Note that even though unit is written (), it is represented by
+       * an empty record. *)
+      fun isPatUnitOrWild (A.MarkPat (p,_)) = isPatUnitOrWild p
+        | isPatUnitOrWild (A.FlatAppPat [{item = p,...}]) = isPatUnitOrWild p
+        | isPatUnitOrWild (A.RecordPat {def = d,...}) = null d
+        | isPatUnitOrWild A.WildPat = true
+        | isPatUnitOrWild _ = false
+      (* Given a ValDec, return true it's of the form val () = ... or
+       * val _ = ... *)
+      fun isValImperative (A.ValDec ([A.MarkVb (A.Vb {pat = p,...},_)],_)) =
+            isPatUnitOrWild p
+        | isValImperative _ = false
+    in
+      List.filter isValImperative vs
     end
 end
