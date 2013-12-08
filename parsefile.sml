@@ -1,3 +1,6 @@
+(* ParseFile is the main work horse of this project. It performs almost all of
+ * the analysis on an ML parse tree. There are handy utility functions for
+ * extracting types of declarations or expressions in a single file *)
 signature PARSEFILE = sig
 
   (* readFile filename returns the parse tree resulting from reading the source

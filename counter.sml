@@ -1,3 +1,5 @@
+(* This structure provides a counter for counting things using a simple
+ * interface. *)
 signature COUNTER = sig
 
   (* Maintains a count of items. See function getCountOf *)

@@ -1,3 +1,6 @@
+(* ManyFiles allows us to perform many of the operations provides
+ * by ParseFile in aggregrate on a list of filenames. See the
+ * function getFileList below. *)
 signature MANYFILES = sig
   (* given a list of line separated file names,
    * product a list of these names *)
@@ -122,42 +125,30 @@ structure ManyFiles :> MANYFILES = struct
   fun getDecCount fileList decs =
     L.foldl
       (fn (f, acc) =>
-        let
-          val decCount = parseFile f >= (fn p => P.countDec decs p)
-        in
-          case decCount of
+         (case parseFile f >= (fn p => P.countDec decs p) of
             SOME dc => C.mergeCounters (dc, acc)
-          | NONE => acc
-        end) C.emptyCounter fileList
+          | NONE => acc)) C.emptyCounter fileList
 
   (* see signature *)
   fun getExpCount fileList exps =
     L.foldl
       (fn (f, acc) =>
-        let
-          val expCount = parseFile f >= (fn p => P.countExp exps p)
-        in
-          case expCount of
+         (case parseFile f >= (fn p => P.countExp exps p) of
             SOME ec => C.mergeCounters (ec, acc)
-          | NONE => acc
-        end) C.emptyCounter fileList
+          | NONE => acc)) C.emptyCounter fileList
 
   (* see signature *)
   fun countTopLevelDecs fileList =
     L.foldl
       (fn (f, acc) =>
-        let
-          val decCount = parseFile f >=
+         (case decCount = parseFile f >=
                            P.getTopLevelDec >= 
                            (fn dc => map AstType.decToDecType dc) >=
                            (fn ds => L.foldl
                                         (fn (d, a) => C.increment d 1 a)
-                                        C.emptyCounter ds)
-        in
-          case decCount of
+                                        C.emptyCounter ds) of
             SOME dc => C.mergeCounters (dc, acc)
-          | NONE => acc
-        end) C.emptyCounter fileList
+          | NONE => acc)) C.emptyCounter fileList
 
   (* see signature *)
   fun countLines fileList =
@@ -176,25 +167,17 @@ structure ManyFiles :> MANYFILES = struct
   fun getDecLevelCounts fileList =
     L.foldl
       (fn (f, acc) =>
-        let
-          val decCount = parseFile f >= P.countDecLevel
-        in
-          case decCount of
+         (case decCount = parseFile f >= P.countDecLevel of
             SOME dc => C.mergeCounters (dc, acc)
-          | NONE => acc
-        end) C.emptyCounter fileList
+          | NONE => acc)) C.emptyCounter fileList
 
   (* see signature *)
   fun getLevelPathCounts fileList =
     L.foldl
       (fn (f, acc) =>
-        let
-          val decCount = parseFile f >= P.countLevelPaths
-        in
-          case decCount of
+         (case decCount = parseFile f >= P.countLevelPaths of
             SOME dc => C.mergeCounters (dc, acc)
-          | NONE => acc
-        end) C.emptyCounter fileList
+          | NONE => acc)) C.emptyCounter fileList
 
   (* see signature *)
   val filterByLevel = P.filterByLevel
@@ -203,27 +186,20 @@ structure ManyFiles :> MANYFILES = struct
   fun findNontrivialSeqExp fileList =
     L.foldl
       (fn (f, acc) =>
-        let
-          val e = parseFile f >= (fn p => P.findExp [AstType.SEQEXP] p)
-        in
-          case e of
+         (case parseFile f >= (fn p => P.findExp [AstType.SEQEXP] p) of
             SOME es =>
               if length
                    (List.filter
                      (fn (Ast.SeqExp xs) => length xs > 1 | _ => false) es) > 1
               then f :: acc
               else acc
-          | NONE => acc
-        end) [] fileList
+          | NONE => acc)) [] fileList
 
   (* see signature *)
   fun countAppVars strct allNames fileList =
     L.foldl
       (fn (f, acc) =>
-        let
-          val names = parseFile f >= ParseFile.getAppVars
-        in
-          case names of
+         (case parseFile f >= ParseFile.getAppVars of
             SOME xs =>
               List.foldl
                 (fn (n,a) =>
@@ -233,29 +209,21 @@ structure ManyFiles :> MANYFILES = struct
                         (fn x =>
                           x = n orelse String.isSuffix (strct ^ "." ^ n) x) xs))
                     a) acc allNames
-          | NONE => acc
-        end) Counter.emptyCounter fileList
+          | NONE => acc)) Counter.emptyCounter fileList
 
   (* see signature *)
   fun getViolations violationF fileList =
     L.foldl
       (fn (f, acc) =>
-        let
-          val vs = parseFile f
-        in
-          case vs of
+         (case parseFile f of
             SOME _ => violationF f @ acc
-          | NONE => acc
-        end) [] fileList
+          | NONE => acc)) [] fileList
 
   (* see signature *)
   fun getViolationsByFile violationF fileList =
     L.foldl
       (fn (f, acc) =>
-        let
-          val vs = parseFile f
-        in
-          case vs of
+         (case parseFile f of
             SOME _ =>
               let
                 val vs = violationF f
@@ -264,32 +232,23 @@ structure ManyFiles :> MANYFILES = struct
                   acc
                 else (f, violationF f) :: acc
               end
-          | NONE => acc
-        end) [] fileList
+          | NONE => acc)) [] fileList
 
   (* see signature *)
   fun filterIfTopLevelAllModule fileList =
     L.filter
       (fn f =>
-        let
-          val v = parseFile f >= ParseFile.isTopLevelOnlyModule
-        in
-          case v of
+         (case parseFile f >= ParseFile.isTopLevelOnlyModule of
             SOME t => t
-          | NONE => false
-        end) fileList
+          | NONE => false)) fileList
 
   (* see signature *)
   fun filterIfTopLevelHasModule fileList =
     L.filter
       (fn f =>
-        let
-          val v = parseFile f >= ParseFile.topLevelHasModule
-        in
-          case v of
+         (case parseFile f >= ParseFile.topLevelHasModule of
             SOME t => t
-          | NONE => false
-        end) fileList
+          | NONE => false)) fileList
 
   (* see signature *)
   fun getFunsInsideLet fileList =

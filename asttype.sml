@@ -1,3 +1,7 @@
+(* This structure allows us to refer to values for the ADTs Ast.dec and
+ * Ast.exp. It's very difficult to create new values using the value
+ * constructors. Instead here, we provide a simple way to refer to
+ * the times when a specific value constructor is used. *)
 signature ASTTYPE = sig
 
   (* algebraic datatype to locally describe the types of declarations *)

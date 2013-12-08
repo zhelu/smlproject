@@ -1,3 +1,5 @@
+(* This structure provides all functions to find style violations
+ * recognized in this project. *)
 signature VIOLATION = sig
   (* given a filename, create a sourcemap tracking line breaks *)
   val getSourceMap : string -> SourceMap.sourcemap
