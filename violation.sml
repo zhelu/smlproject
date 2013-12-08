@@ -17,6 +17,9 @@ signature VIOLATION = sig
   (* get a list of width violations from the input source file *)
   val getWidthViolations : string -> violation list
 
+  (* Given a source file, return a counter of all widths in the file. *)
+  val countLineWidth : string -> int Counter.counter
+
   (* get a list of tab violations from the input source file *)
   val getTabViolations : string -> violation list
 
@@ -76,6 +79,21 @@ structure Violation :> VIOLATION = struct
             else loop l (c + 1) a
     in
       List.rev (loop 1 1 []) before TextIO.closeIn instrm
+    end
+
+  (* see signature *)
+  fun countLineWidth filename =
+    let
+      val instrm = TextIO.openIn filename
+      fun loop c a =
+        (case TextIO.input1 instrm of
+           NONE => a
+         | SOME e =>
+             if e = #"\n" then
+               loop 0 (Counter.increment c 1 a)
+             else loop (c + 1) a)
+    in
+      loop 0 Counter.emptyCounter before TextIO.closeIn instrm
     end
 
   (* see signature *)
@@ -357,6 +375,7 @@ structure Violation :> VIOLATION = struct
     let
       val parseTree = ParseFile.readFile filename
       val sm = getSourceMap filename
+      (* get the line number *)
       fun getLine (Ast.FunDec (Ast.MarkFb (_, (p,_)) :: _, _)) =
         let
           val {fileName = _,
@@ -365,6 +384,7 @@ structure Violation :> VIOLATION = struct
         in
           line
         end
+        | getLine _ = let exception Impossible in raise Impossible end
       val vs = ParseFile.findFoldOpportunity parseTree
     in
       map (FOLD o getLine) vs

@@ -15,8 +15,9 @@ signature COUNTER = sig
   (* Take two counters and merge their counts
    * Algebraic laws:
    * a merge b = b merge a
-   * a merge empty = a *)
-  val mergeCounters : ''a counter * ''a counter -> ''a counter
+   * a merge empty = a
+   * mergeInto is more efficient if the first argument is smaller *)
+  val mergeInto : ''a counter * ''a counter -> ''a counter
 
   (* Given a value and a counter, return the count of the input parameter *)
   val getCountOf : ''a -> ''a counter -> int
@@ -49,7 +50,7 @@ structure Counter :> COUNTER = struct
   val emptyCounter = []
 
   (* see signature *)
-  fun mergeCounters (a, b) =
+  fun mergeInto (a, b) =
     List.foldl (fn ((x, i), acc) => increment x i acc) b a
 
   (* see signature *)

@@ -76,6 +76,9 @@ signature MANYFILES = sig
    *   val () = ...
    *   val _ = ... *)
   val getImperativeVals : string list -> Ast.dec list
+
+  (* Given a list of files, get a count of all line widths *)
+  val getLineWidthCounts : string list -> int Counter.counter
 end
 
 structure ManyFiles :> MANYFILES = struct
@@ -126,7 +129,7 @@ structure ManyFiles :> MANYFILES = struct
     L.foldl
       (fn (f, acc) =>
          (case parseFile f >= (fn p => P.countDec decs p) of
-            SOME dc => C.mergeCounters (dc, acc)
+            SOME dc => C.mergeInto (dc, acc)
           | NONE => acc)) C.emptyCounter fileList
 
   (* see signature *)
@@ -134,21 +137,19 @@ structure ManyFiles :> MANYFILES = struct
     L.foldl
       (fn (f, acc) =>
          (case parseFile f >= (fn p => P.countExp exps p) of
-            SOME ec => C.mergeCounters (ec, acc)
+            SOME ec => C.mergeInto (ec, acc)
           | NONE => acc)) C.emptyCounter fileList
 
   (* see signature *)
-  fun countTopLevelDecs fileList =
+  val countTopLevelDecs =
     L.foldl
       (fn (f, acc) =>
-         (case decCount = parseFile f >=
-                           P.getTopLevelDec >= 
-                           (fn dc => map AstType.decToDecType dc) >=
-                           (fn ds => L.foldl
-                                        (fn (d, a) => C.increment d 1 a)
-                                        C.emptyCounter ds) of
-            SOME dc => C.mergeCounters (dc, acc)
-          | NONE => acc)) C.emptyCounter fileList
+         (case parseFile f >= P.getTopLevelDec >= 
+                 (fn dc => map AstType.decToDecType dc) >=
+                 (fn ds => L.foldl (fn (d, a) => C.increment d 1 a)
+                               C.emptyCounter ds) of
+            SOME dc => C.mergeInto (dc, acc)
+          | NONE => acc)) C.emptyCounter
 
   (* see signature *)
   fun countLines fileList =
@@ -164,26 +165,26 @@ structure ManyFiles :> MANYFILES = struct
     length (L.filter (fn f => parseFile f <> NONE) fileList)
 
   (* see signature *)
-  fun getDecLevelCounts fileList =
+  val getDecLevelCounts =
     L.foldl
       (fn (f, acc) =>
-         (case decCount = parseFile f >= P.countDecLevel of
-            SOME dc => C.mergeCounters (dc, acc)
-          | NONE => acc)) C.emptyCounter fileList
+         (case parseFile f >= P.countDecLevel of
+            SOME dc => C.mergeInto (dc, acc)
+          | NONE => acc)) C.emptyCounter
 
   (* see signature *)
-  fun getLevelPathCounts fileList =
+  val getLevelPathCounts =
     L.foldl
       (fn (f, acc) =>
-         (case decCount = parseFile f >= P.countLevelPaths of
-            SOME dc => C.mergeCounters (dc, acc)
-          | NONE => acc)) C.emptyCounter fileList
+         (case parseFile f >= P.countLevelPaths of
+            SOME dc => C.mergeInto (dc, acc)
+          | NONE => acc)) C.emptyCounter
 
   (* see signature *)
   val filterByLevel = P.filterByLevel
 
   (* see signature *)
-  fun findNontrivialSeqExp fileList =
+  val findNontrivialSeqExp =
     L.foldl
       (fn (f, acc) =>
          (case parseFile f >= (fn p => P.findExp [AstType.SEQEXP] p) of
@@ -193,10 +194,10 @@ structure ManyFiles :> MANYFILES = struct
                      (fn (Ast.SeqExp xs) => length xs > 1 | _ => false) es) > 1
               then f :: acc
               else acc
-          | NONE => acc)) [] fileList
+          | NONE => acc)) []
 
   (* see signature *)
-  fun countAppVars strct allNames fileList =
+  fun countAppVars strct allNames =
     L.foldl
       (fn (f, acc) =>
          (case parseFile f >= ParseFile.getAppVars of
@@ -209,18 +210,18 @@ structure ManyFiles :> MANYFILES = struct
                         (fn x =>
                           x = n orelse String.isSuffix (strct ^ "." ^ n) x) xs))
                     a) acc allNames
-          | NONE => acc)) Counter.emptyCounter fileList
+          | NONE => acc)) Counter.emptyCounter
 
   (* see signature *)
-  fun getViolations violationF fileList =
+  fun getViolations violationF =
     L.foldl
       (fn (f, acc) =>
          (case parseFile f of
             SOME _ => violationF f @ acc
-          | NONE => acc)) [] fileList
+          | NONE => acc)) []
 
   (* see signature *)
-  fun getViolationsByFile violationF fileList =
+  fun getViolationsByFile violationF =
     L.foldl
       (fn (f, acc) =>
          (case parseFile f of
@@ -232,26 +233,26 @@ structure ManyFiles :> MANYFILES = struct
                   acc
                 else (f, violationF f) :: acc
               end
-          | NONE => acc)) [] fileList
+          | NONE => acc)) []
 
   (* see signature *)
-  fun filterIfTopLevelAllModule fileList =
+  val filterIfTopLevelAllModule =
     L.filter
       (fn f =>
          (case parseFile f >= ParseFile.isTopLevelOnlyModule of
             SOME t => t
-          | NONE => false)) fileList
+          | NONE => false))
 
   (* see signature *)
-  fun filterIfTopLevelHasModule fileList =
+  val filterIfTopLevelHasModule =
     L.filter
       (fn f =>
          (case parseFile f >= ParseFile.topLevelHasModule of
             SOME t => t
-          | NONE => false)) fileList
+          | NONE => false))
 
   (* see signature *)
-  fun getFunsInsideLet fileList =
+  val getFunsInsideLet =
     L.foldl
     (fn (f,a) =>
        (case parseFile f >= (ParseFile.findExp [AstType.LETEXP]) of
@@ -264,10 +265,10 @@ structure ManyFiles :> MANYFILES = struct
                   (fn (Ast.LetExp {dec = d,...}) =>
                      ParseFile.getTopLevelDec d
                    | _ => let exception Impossible in raise Impossible end) es))
-        | NONE => a)) [] fileList
+        | NONE => a)) []
 
   (* see signature *)
-  fun getFunsInsideLocal fileList =
+  val getFunsInsideLocal =
     L.foldl
     (fn (f,a) =>
        (case parseFile f >= (ParseFile.findDec [AstType.LOCALDEC]) of
@@ -280,14 +281,21 @@ structure ManyFiles :> MANYFILES = struct
                   (fn (Ast.LocalDec (d,_)) =>
                      ParseFile.getTopLevelDec d
                    | _ => let exception Impossible in raise Impossible end) ds))
-        | NONE => a)) [] fileList
+        | NONE => a)) []
 
   (* see signature *)
-  fun getImperativeVals fileList =
+  val getImperativeVals =
     L.foldl
       (fn (f,a) =>
          (case parseFile f >= ParseFile.findImperativeVals of
             SOME vs => a @ vs
-          | NONE => a)) [] fileList
+          | NONE => a)) []
              
+  (* see signature *)
+  val getLineWidthCounts = 
+    L.foldl
+      (fn (f,a) =>
+         (case parseFile f of
+            SOME _ => Counter.mergeInto (Violation.countLineWidth f, a)
+          | NONE => a)) Counter.emptyCounter
 end
