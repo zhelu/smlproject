@@ -5,7 +5,7 @@
 *.txt
 *.gv
 MLKit\ 4.3.7/
-compiler/
+smlnj/
 til/
 mlton-master/
 foxnet/
