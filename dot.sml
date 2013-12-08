@@ -1,3 +1,4 @@
+(* This structure can draw a dot graph showing how declarations are nested. *)
 signature DOT = sig
   (* Given a counter of paths of nesting for declarations, write the
    * corresponding graph in dot format to a file with the given filename *)

@@ -5,6 +5,7 @@ Group
   signature VIOLATION
   signature MANYFILES
   signature DOT
+  signature JGRAPH
 
   structure Counter
   structure AstType
@@ -12,6 +13,7 @@ Group
   structure Violation
   structure ManyFiles
   structure Dot
+  structure JGraph
 is
   counter.sml
   asttype.sml
@@ -19,6 +21,7 @@ is
   manyfiles.sml
   dot.sml
   violation.sml
+  jgraph.sml
   
   $/basis.cm
   $/smlnj-lib.cm
