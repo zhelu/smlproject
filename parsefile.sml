@@ -82,6 +82,10 @@ signature PARSEFILE = sig
    * opportunity for a fold *)
   val findFoldOpportunity : Ast.dec -> Ast.dec list
 
+  (* Given a parse tree, find functions where there is potentially an
+   * opportunity for a fold *)
+  val findMapFilterOpportunity : Ast.dec -> Ast.dec list
+
   (* Given a parse tree, find val declarations in one of these forms:
    *   val () = ...
    *   val _ = ... *)
@@ -250,7 +254,7 @@ structure ParseFile :> PARSEFILE = struct
       fun getFirstVarSymbol ({fixity = _,
                               region = _,
                               item = A.MarkPat (A.VarPat s,_)} :: ps) =
-            Symbol.name (List.last s)
+            Symbol.name (L.last s)
         | getFirstVarSymbol (_ :: ps) = getFirstVarSymbol ps
         | getFirstVarSymbol _ = let exception Impossible in raise Impossible end
     in
@@ -267,13 +271,12 @@ structure ParseFile :> PARSEFILE = struct
           (* Check the list of expressions for a call to this function. *)
           fun checkExpForName (A.MarkExp (e, _)) = checkExpForName e
             | checkExpForName (A.SeqExp es) =
-                L.foldl (fn (e, acc) => checkExpForName e orelse acc)
-                  false es
+                L.exists checkExpForName es
             | checkExpForName (A.VarExp path) =
                 L.exists (fn (Symbol.SYMBOL (_, n)) => n = name) path
             | checkExpForName (A.FlatAppExp items) =
-                L.foldl (fn ({item = e, fixity = _, region = _}, acc) =>
-                             checkExpForName e orelse acc) false items
+                L.exists (fn {item = e, fixity = _, region = _} =>
+                             checkExpForName e) items
             | checkExpForName _ = false
           (* In the function application, drill down into the item of
            * the fixity record. *)
@@ -283,14 +286,11 @@ structure ParseFile :> PARSEFILE = struct
            * look for a function application. *)
           fun walkExp (A.LetExp {expr = e,...}) = walkExp e
             | walkExp (A.CaseExp {rules = rules,...}) =
-                L.foldl
-                  (fn (A.Rule {exp = e,...}, acc) => walkExp e orelse acc)
-                  false rules
+                L.exists (fn A.Rule {exp = e,...} => walkExp e) rules
             | walkExp (A.IfExp {thenCase = t, elseCase = e, ...}) =
-                (walkExp t) orelse (walkExp e)
+                walkExp t orelse walkExp e
             | walkExp (A.FlatAppExp items) =
-                L.foldl (fn (i, acc) => checkItemForName i orelse acc)
-                  false items
+                L.exists checkItemForName items
             | walkExp (A.MarkExp (e, _)) = walkExp e
             | walkExp _ = false
           (* check for a call to this function inside all clauses *)
@@ -299,10 +299,9 @@ structure ParseFile :> PARSEFILE = struct
            * clauses call this function *)
           fun walkFb (A.MarkFb (fb, _)) = walkFb fb
             | walkFb (A.Fb (clauses, _)) =
-                L.foldl (fn (c, acc) => walkClause c orelse acc)
-                  false clauses
+                L.exists walkClause clauses
         in
-          L.foldl (fn (fb, acc) => walkFb fb orelse acc) false fblist
+          L.exists walkFb fblist
         end
     | isRecursiveFun _ = false
 
@@ -321,7 +320,7 @@ structure ParseFile :> PARSEFILE = struct
               fun findExpInVb (A.Vb {exp = e,...}) = e
                 | findExpInVb (A.MarkVb (vb, _)) = findExpInVb vb
             in
-              L.foldl (fn (vb, acc) => findExpInVb vb :: acc) [] vblist
+              map findExpInVb vblist
             end
         | findExpInDec (A.ValrecDec (rvblist, _)) =
             let
@@ -329,13 +328,12 @@ structure ParseFile :> PARSEFILE = struct
                 | findExpInRvb (A.MarkRvb (rvb, _)) =
                     findExpInRvb rvb
             in
-              L.foldl (fn (rvb, acc) => findExpInRvb rvb :: acc) [] rvblist
+              map findExpInRvb rvblist
             end
         | findExpInDec (A.FunDec (fblist, _)) =
             let
               fun findExpInFb (A.Fb (clauses, _)) =
-                    L.foldl (fn (A.Clause {exp = e, ...}, acc) => e :: acc)
-                      [] clauses
+                    map (fn A.Clause {exp = e, ...} => e) clauses
                 | findExpInFb (A.MarkFb (fb, _)) = findExpInFb fb
             in
               L.foldl (fn (fb, acc) => findExpInFb fb @ acc) [] fblist
@@ -501,7 +499,7 @@ structure ParseFile :> PARSEFILE = struct
     let
       val decs = getTopLevelDec parseTree
     in
-      List.all
+      L.all
         (fn d =>
           (case AstType.decToDecType d of
              AstType.SIGDEC => true
@@ -516,7 +514,7 @@ structure ParseFile :> PARSEFILE = struct
     let
       val decs = getTopLevelDec parseTree
     in
-      List.exists
+      L.exists
         (fn d =>
           (case AstType.decToDecType d of
              AstType.SIGDEC => true
@@ -668,6 +666,46 @@ structure ParseFile :> PARSEFILE = struct
       (map (fn ((x,_),c) => (x,c))
         (L.filter (fn ((_,i),_) => i = level)
           (C.counterToList levelCounter)))
+          
+  (* DFS on expr to find subexpressions and apply p to FlatAppExp's *)
+  fun searchExpr p (e as A.FlatAppExp expFixitems) =
+        L.exists (fn ({item = e, fixity = _, region = _}) => searchExpr p e)
+           expFixitems
+        orelse p e
+    | searchExpr p (A.SeqExp [exp]) = searchExpr p exp
+    | searchExpr p (A.AppExp {function = fexp, argument = arg}) =
+        searchExpr p fexp orelse searchExpr p arg
+    | searchExpr p (A.CaseExp {expr = exp, rules = rules}) =
+        searchExpr p exp
+        orelse L.exists (fn A.Rule {exp = e,...} => searchExpr p e) rules
+    | searchExpr p (A.LetExp {expr = exp,...}) = searchExpr p exp
+    | searchExpr p (A.SeqExp exps) =
+        L.exists (searchExpr p) exps
+    | searchExpr p (A.RecordExp symbolExpPairs) =
+        L.exists (fn (_, e) => searchExpr p e) symbolExpPairs
+    | searchExpr p (A.ListExp exps) =
+        L.exists (searchExpr p) exps
+    | searchExpr p (A.TupleExp exps) =
+        L.exists (searchExpr p) exps
+    | searchExpr p (A.ConstraintExp {expr = exp,...}) = searchExpr p exp
+    | searchExpr p (A.HandleExp {expr = exp, rules = rules}) =
+        searchExpr p exp
+        orelse L.exists (fn A.Rule {exp = e,...} => searchExpr p e) rules
+    | searchExpr p (A.RaiseExp exp) = searchExpr p exp
+    | searchExpr p (A.IfExp {test = t, thenCase = tt, elseCase = tf}) =
+        searchExpr p t
+        orelse searchExpr p tt
+        orelse searchExpr p tf
+    | searchExpr p (A.AndalsoExp (e1, e2)) =
+        searchExpr p e1 orelse searchExpr p e2
+    | searchExpr p (A.OrelseExp (e1, e2)) =
+        searchExpr p e1 orelse searchExpr p e2
+    | searchExpr p (A.MarkExp (exp,_)) = searchExpr p exp
+    | searchExpr p (A.VectorExp exps) =
+        L.exists (searchExpr p) exps
+    | searchExpr _ _ = false
+
+  val _ = op searchExpr : (A.exp -> bool) -> A.exp -> bool
 
   (* see signature *)
   fun findFoldOpportunity parseTree =
@@ -690,12 +728,12 @@ structure ParseFile :> PARSEFILE = struct
                                    {item = A.MarkPat (A.VarPat cdr, _),
                                     fixity = _,
                                     region = _} :: _)) =
-                    if Symbol.name (List.last cons) = "::" then
-                      SOME (Symbol.name (List.last cdr))
+                    if Symbol.name (L.last cons) = "::" then
+                      SOME (Symbol.name (L.last cdr))
                     else NONE
                 | isPatternCons _ = NONE
             in
-              List.foldl (fn (c,acc) =>
+              L.foldl (fn (c,acc) =>
                 let
                   val pats = getPatsFromClause c
                   fun findCons _ [] = []
@@ -741,7 +779,7 @@ structure ParseFile :> PARSEFILE = struct
                     (A.FlatAppExp ({item = A.MarkExp (A.VarExp s, _),
                                     ...} :: rest)) =
                       if i = j then
-                        Symbol.name (List.last s) = n
+                        Symbol.name (L.last s) = n
                       else getCdrIndex (j + 1) (A.FlatAppExp rest)
                 | getCdrIndex _ _ = false
             in
@@ -754,62 +792,13 @@ structure ParseFile :> PARSEFILE = struct
           fun isRecursiveCallOnCdr (A.FlatAppExp ({item = e,...} :: rest)) =
                 (case e of
                    A.MarkExp (A.VarExp s,_) =>
-                     if Symbol.name (List.last s) = fName then
+                     if Symbol.name (L.last s) = fName then
                        isCdrInPosI i (A.FlatAppExp rest)
                      else isRecursiveCallOnCdr (A.FlatAppExp rest)
                  | _ => isRecursiveCallOnCdr (A.FlatAppExp rest))
             | isRecursiveCallOnCdr _ = false
-          (* DFS on expr to find subexpressions and apply isRecursiveCallOnCdr
-           * to FlatAppExp's *)
-          fun searchExpr e =
-            (case e of
-               (A.FlatAppExp expFixitems) =>
-                  isRecursiveCallOnCdr e
-                  orelse
-                    L.foldl (fn ({item = e, fixity = _, region = _}, acc) =>
-                               searchExpr e orelse acc)
-                      false expFixitems
-             | (A.SeqExp [exp]) => searchExpr exp
-             | (A.AppExp {function = fexp, argument = arg}) =>
-                  searchExpr fexp orelse searchExpr arg
-             | (A.CaseExp {expr = exp, rules = rules}) =>
-                  let
-                    val acc' = searchExpr exp
-                  in
-                    L.foldl (fn (A.Rule {exp = e,...}, acc) =>
-                                 searchExpr e orelse acc) acc' rules
-                  end
-             | (A.LetExp {expr = exp,...}) => searchExpr exp
-             | (A.SeqExp exps) =>
-                 L.foldl (fn (e, acc) => searchExpr e orelse acc) false exps
-             | (A.RecordExp symbolExpPairs) =>
-                 L.foldl (fn ((_, e), acc) => searchExpr e orelse acc) false
-                   symbolExpPairs
-             | (A.ListExp exps) =>
-                 L.foldl (fn (e, acc) => searchExpr e orelse acc) false exps
-             | (A.TupleExp exps) =>
-                 L.foldl (fn (e, acc) => searchExpr e orelse acc) false exps
-             | (A.ConstraintExp {expr = exp,...}) => searchExpr exp
-             | (A.HandleExp {expr = exp, rules = rules}) =>
-                  let
-                    val acc' = searchExpr exp
-                  in
-                    L.foldl (fn (A.Rule {exp = e,...}, acc) =>
-                               searchExpr e orelse acc) acc' rules
-                  end
-             | (A.RaiseExp exp) => searchExpr exp
-             | (A.IfExp {test = t, thenCase = tt, elseCase = tf}) =>
-                  searchExpr t
-                  orelse searchExpr tt
-                  orelse searchExpr tf
-             | (A.AndalsoExp (e1, e2)) => searchExpr e1 orelse searchExpr e2
-             | (A.OrelseExp (e1, e2)) => searchExpr e1 orelse searchExpr e2
-             | (A.MarkExp (exp,_)) => searchExpr exp
-             | (A.VectorExp exps) =>
-                  L.foldl (fn (e, acc) => searchExpr e orelse acc) false exps
-             | _ => false)
         in
-          if searchExpr e then SOME i else NONE
+          if searchExpr isRecursiveCallOnCdr e then SOME i else NONE
         end
       (* check that the ith position is either null or while or some other var *)
       fun isIthWildOrNull i [] = true
@@ -817,7 +806,7 @@ structure ParseFile :> PARSEFILE = struct
             let
               val pats = map (fn {item = p, fixity = _, region = _} => p) ps
             in
-              (case List.nth (pats, i) of
+              (case L.nth (pats, i) of
                  A.MarkPat (A.ListPat [], _) => isIthWildOrNull i rest
                | A.MarkPat (A.ListPat _, _) => false
                | _ => isIthWildOrNull i rest)
@@ -841,6 +830,55 @@ structure ParseFile :> PARSEFILE = struct
     end
 
   (* see signature *)
+  fun findMapFilterOpportunity parseTree =
+    let
+      val folds = findFoldOpportunity parseTree
+      (* extract clauses from Fb *)
+      fun findClauses (A.MarkFb (f, _)) = findClauses f
+        | findClauses (A.Fb (cs, _)) = cs
+      (* Does the function call itself recursively in the tail of a cons cell *)
+      fun hasConsBeforeFName (f as A.FunDec ([fb], _)) =
+        let
+          val fName = getFunName f
+          (* return true if the we have a cons cell with the tail being
+           * a recursive call to the function *) 
+          fun isConsBeforeFName 
+                (A.FlatAppExp
+                  (xs as ({item = e1,...} :: {item = e2, ...} :: rest))) =
+                (case (e1, e2) of
+                   (A.MarkExp (A.VarExp s1,_), A.MarkExp (A.VarExp s2,_)) =>
+                     if Symbol.name (L.last s2) = fName 
+                        andalso Symbol.name (L.last s1) = "::" then
+                        true
+                     else isConsBeforeFName (A.FlatAppExp (tl xs))
+                 | _ => isConsBeforeFName (A.FlatAppExp (tl xs)))
+            | isConsBeforeFName _ = false
+        in
+          L.exists
+            (fn (A.Clause {exp = e,...}) => searchExpr isConsBeforeFName e)
+            (findClauses fb)
+        end
+        | hasConsBeforeFName _ = false
+      fun hasNullListRightSide (A.FunDec ([fb], _)) =
+        let
+          val clauses = findClauses fb
+          fun hasNullList (A.FlatAppExp [{item = e,...}]) = hasNullList e
+            | hasNullList (A.MarkExp (e, _)) = hasNullList e
+            | hasNullList (A.SeqExp [e]) = hasNullList e
+            | hasNullList (A.ListExp []) = true
+            | hasNullList _ = false
+        in
+          L.exists (fn (A.Clause {exp = e,...}) => hasNullList e) clauses
+        end
+        | hasNullListRightSide _ = false
+      fun canReplaceWithMapFilter (f as A.FunDec ([fb], _)) =
+            hasConsBeforeFName f andalso hasNullListRightSide f
+        | canReplaceWithMapFilter _ = false
+    in
+      L.filter canReplaceWithMapFilter folds
+    end
+
+  (* see signature *)
   fun findImperativeVals parseTree =
     let
       val vs = findDec [AstType.VALDEC] parseTree
@@ -858,6 +896,6 @@ structure ParseFile :> PARSEFILE = struct
             isPatUnitOrWild p
         | isValImperative _ = false
     in
-      List.filter isValImperative vs
+      L.filter isValImperative vs
     end
 end

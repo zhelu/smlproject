@@ -13,6 +13,7 @@ signature VIOLATION = sig
                      | TAB of int
                      | IF of int
                      | FOLD of int
+                     | MAPFILTER of int
 
   (* get a list of width violations from the input source file *)
   val getWidthViolations : string -> violation list
@@ -29,8 +30,11 @@ signature VIOLATION = sig
   (* get a list of if violations from the input source file *)
   val getIfViolations : string -> violation list
 
-  (* get a list of fold violations from the input source file *)
+  (* get a list of fold opportunities from the input source file *)
   val getFoldViolations : string -> violation list
+
+  (* get a list of map/filter opportunities from the input source file *)
+  val getMapFilterViolations : string -> violation list
 
   (* given a filename, get a list of all violations *)
   val getViolations : string -> violation list
@@ -44,6 +48,7 @@ structure Violation :> VIOLATION = struct
                      | TAB of int
                      | IF of int
                      | FOLD of int
+                     | MAPFILTER of int
 
   (* see signature *) 
   fun getSourceMap filename =
@@ -370,24 +375,37 @@ structure Violation :> VIOLATION = struct
             | NONE => acc)) [] ifExps
     end
 
+  (* Get the line number of a FunDec. Can only be called on a FunDec. *)
+  fun getLine sm (Ast.FunDec (Ast.MarkFb (_, (p,_)) :: _, _)) =
+    let
+      val {fileName = _,
+           line = line,
+           column = _} = SourceMap.filepos sm (p - 1)
+    in
+      line
+    end
+    | getLine _ _ = let exception Impossible in raise Impossible end
+
+  val _ = op getLine : SourceMap.sourcemap -> Ast.dec -> int
+
   (* see signature *)
   fun getFoldViolations filename =
     let
       val parseTree = ParseFile.readFile filename
       val sm = getSourceMap filename
-      (* get the line number *)
-      fun getLine (Ast.FunDec (Ast.MarkFb (_, (p,_)) :: _, _)) =
-        let
-          val {fileName = _,
-               line = line,
-               column = _} = SourceMap.filepos sm (p - 1)
-        in
-          line
-        end
-        | getLine _ = let exception Impossible in raise Impossible end
       val vs = ParseFile.findFoldOpportunity parseTree
     in
-      map (FOLD o getLine) vs
+      map (FOLD o (getLine sm)) vs
+    end
+
+  (* see signature *)
+  fun getMapFilterViolations filename =
+    let
+      val parseTree = ParseFile.readFile filename
+      val sm = getSourceMap filename
+      val vs = ParseFile.findMapFilterOpportunity parseTree
+    in
+      map (MAPFILTER o (getLine sm)) vs
     end
                 
   (* see signature *)
@@ -398,8 +416,9 @@ structure Violation :> VIOLATION = struct
       val ifs = getIfViolations filename
       val offside = getOffsideViolations filename
       val folds = getFoldViolations filename
+      val mapfilter = getMapFilterViolations filename
     in
-      width @ tab @ ifs @ offside @ folds
+      width @ tab @ ifs @ offside @ folds @ mapfilter
     end
 
 end
