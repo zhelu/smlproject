@@ -91,11 +91,20 @@ We approach this problem by examining source code written by experts.
 For samples of expert code, we turned to prominent projects where the source code is readily available:
 \begin{enumerate}
 \item The Standard ML of New Jersey compiler (SML/NJ), whose parser was used extensively for code analysis in this project (299 parseable files, 81102 lines of code)\footnote{\url{http://smlnj.cs.uchicago.edu/dist/working/110.76/compiler.tgz}}
-\item The MLKit compiler for SML (2286 parseable files, totalling 530334 lines of code)\footnote{\url{http://www.itu.dk/research/mlkit/dist/mlkit-4.3.0-src.tgz}}
-\item FoxNet, an implementation of the standard TCP/IP networking protocol stack in SML (74 parseable files, 8545 lines of code)\footnote{\url{ftp://ftp.cs.cmu.edu/project/fox/snapshot/foxnet.tar.gz}}
-\item Til, a type-directed compiler for ML (615 parseable files, totalling 222317 lines of code)\footnote{\url{http://www.cs.cornell.edu/Info/People/jgm/til.tar.Z}}
-\item MLton, an open-source, whole-program, optimizing SML compiler (853 parseable files, 168323 lines of code)\footnote{\url{http://sourceforge.net/projects/mlton/files/mlton/20130715/mlton-20130715.src.tgz/download}}
+\item The MLKit compiler for SML (1319 parseable files, totalling 306154 lines of code)\footnote{\url{http://www.itu.dk/research/mlkit/dist/mlkit-4.3.0-src.tgz}}
+\item FoxNet, an implementation of the standard TCP/IP networking protocol stack in SML (72 parseable files, 8199 lines of code)\footnote{\url{ftp://ftp.cs.cmu.edu/project/fox/snapshot/foxnet.tar.gz}}
+\item Til, a type-directed compiler for ML (460 parseable files, totalling 109813 lines of code)\footnote{\url{http://www.cs.cornell.edu/Info/People/jgm/til.tar.Z}}
+\item MLton, an open-source, whole-program, optimizing SML compiler (424 parseable files, 58226 lines of code)\footnote{\url{http://sourceforge.net/projects/mlton/files/mlton/20130715/mlton-20130715.src.tgz/download}}
 \end{enumerate}
+
+We ran into a few challenges and complications when analyzing the code.
+In order to focus on real code, we've chosen to ignore source files that are associated
+with testing, regression, or microbenchmarks. On inspection, these files contain much more imperative
+code and do not make the same use of the module system than core files of each project.
+In addition to this issue, due to the presence of the \texttt{open} declaration and
+heavy use of the compilation manager in each project, we had trouble parsing for
+infix expressions. Therefore, we performed our analysis on measurable features
+of the pre-infix parse tree obtained from the SML/NJ ``Visible Compiler.''
 
 The layout of this paper is as follow.
 Section~\ref{sec:metric} provides a brief background
@@ -146,7 +155,7 @@ etc \cite{Bin07}.
 
 We use the parser of the Standard ML of New Jersey compiler along with the accompanying
 abstract syntax tree that it produces. Our analysis
-consists of static analyses of the abstract syntax tree, looking for
+consists of static analyses -- that is, ignoring program input -- of the abstract syntax tree, looking for
 syntactic constructs and patterns in usage.
 \section{STYLE}\label{sec:style}
 \subsection{Style Guides}\label{subsec:guide}
@@ -158,7 +167,10 @@ we will distill a few points of style to examine in the expert code:
 \item SML Style Guide, from CMU\footnote{\url{http://www.cs.cmu.edu/~15150/resources/style.pdf}}
 \item Syntactic Conventions, from MLton website\footnote{\url{http://mlton.org/SyntacticConventions}}
 \end{enumerate}
-Let's take a look at what we can discover.
+
+We cannot take these style guides at face value. Rather, we use
+the style guides as starting points, whose suggestions are potential
+features of analysis.
 \subsection{Tabs vs. Spaces}\label{subsec:tab}
 If one wishes to start a flame war on StackOverflow, one simply needs to start
 a debate over spaces and tabs. The three style guides, nevertheless, are
@@ -191,10 +203,10 @@ wrap at 80 columns \cite{Cmu12}.
 \hline
 Project & Tab violations & Lines per instance & Column violations & Lines per instance \\ \hline\hline
 SML/NJ & 23115 & 3.5086 & 350 & 231.72 \\
-MLKit & 184554 & 2.8736 & 18170 & 29.187 \\
-FoxNet & 2861 & 2.9867 & 31 & 275.65 \\
-Til & 78494 & 2.8323 & 1380 & 161.10 \\
-MLton & 0 & -- & 2884 & 58.364 \\ \hline
+MLKit & 100827 & 3.0364 & 13857 & 22.094 \\
+FoxNet & 2708 & 3.0277 & 31 & 264.48 \\
+Til & 52522 & 2.0908 & 782 & 140.43 \\
+MLton & 0 & -- & 713 & 81.663 \\ \hline
 \end{tabular}
 \caption{Style violations involving whitespace}
 \label{table:whitespace}
@@ -212,10 +224,43 @@ Since the level of indentation does more to highlight the structure of code than
 limiting the width of text does, it is perhaps not surprising that more
 emphasis was placed on eliminating tabs than on observing the 80-column rule.
 
-Since all three style guides recommend using the 80-column rule, we recommend it
-also to beginners. In addition, to help conformity, we recommend they make
-regularly checks to see how well they are adhering to the rule because
-violations are easily noticed as one is writing code.
+One possible suggestion is that not all projects enforce the same width limit.
+We plotted the fraction of lines at least as wide as a given cutoff for each project,
+and we examined limits from 70 columns to 100 columns, inclusive.
+
+\begin{figure}[h!]
+\centering
+\begin{tabular}{cc}
+\includegraphics[scale=0.72]{smlnj.eps} & \includegraphics[scale=0.72]{mlkit.eps} \\
+\includegraphics[scale=0.72]{foxnet.eps} & \includegraphics[scale=0.72]{til.eps} \\
+\includegraphics[scale=0.72]{mlton.eps} & 
+\end{tabular}
+\caption{Fraction of lines at least as wide as a given limit}
+\label{fig:width}
+\end{figure}
+
+Figure~\ref{fig:width} shows the results of our analysis. In the SML/NJ project,
+we notice an ``elbow'' in the plot around 80 columns. This inflection represents
+an effort to limit the maximum width of lines. The tail of the inverse cumulative
+histogram represents the failure to stay within the intended limit. We notice
+also such as ``elbow'' in both the Til and the MLton projects, which we hypothesize
+to mean that each also conforms generally to an 80-column limit. 
+
+FoxNet a more interesting profile in its inverse cumulative histogram. We see
+two discontinuities: one at 80 columns and another at 88 columns, another popular width limit.
+However, since there are so few lines in the FoxNet project, the data produced are
+not as smooth as in other projects. We must therefore be careful not to attribute
+artificial discontinuities caused by data discreteness to actual features. More
+investigation on this required.
+
+Finally, the MLKit project is the most interesting in that we see no inflection in the
+inverse histogram at all. This implies that the implementers of MLKit made little
+effort to limit line width at all!
+
+Clearly, not all experts conform to the 80-column rule.
+In addition, even those we appear to have an 80-column rule ignore it approximately 1\% of the time.
+Nevertheless, experts in most projects do seem to be trying to conform to some limit around 80 columns.
+We therefore recommend to beginners also to try to stay within a column limit.
 \subsection{Verbosity in \texttt{if} Expressions}
 A convention cited in the Cornell style guide is that we should use \texttt{if}
 expressions wisely. There are two specific uses of \texttt{if} that we
@@ -260,10 +305,10 @@ in more concise forms.
 \begin{tabular}{|l||c|c||>{\centering\arraybackslash\hspace{0pt}}p{1in}|c|}\hline
 Project & \texttt{if} violations & Lines per instance & Missed fold opportunities & Lines per instance \\ \hline\hline
 SML/NJ & 25 & 3244.1 & 75 & 1081.4 \\
-MLKit & 182 & 2913.9 & 1470 & 360.77 \\
-FoxNet & 0 & -- & 10 & 854.50 \\
-Til & 149 & 1492.1 & 751 & 296.03 \\
-MLton & 72 & 2337.8 & 202 & 833.28 \\ \hline
+MLKit & 70 & 4373.6 & 624 & 490.63 \\
+FoxNet & 0 & -- & 9 & 911.00 \\
+Til & 23 & 4774.5 & 181 & 140.43 \\
+MLton & 30 & 1940.9 & 22 & 2646.6 \\ \hline
 \end{tabular}
 \caption{Selected usage style violations (see text)}
 \label{table:style}
@@ -306,40 +351,9 @@ rewriting a function as a fold over a list can be much more challenging.
 And when a fold is not obvious, the programmer is surely tempted to just
 get the job done with a recursive function definition.
 
-\begin{figure}[h!]
-\begin{enumerate}
-\item \begin{verbatim}
-fun procstrbs([]) = []
-  | procstrbs((A.STRB{name,...})::rest) = name::(procstrbs rest)
-\end{verbatim}
-
-rewrite as:
-\begin{verbatim}
-fun procstrbs = List.foldr (fn (A.STRB{name,...}, a) => name :: a) []
-\end{verbatim}
-\item \begin{verbatim}
-fun find (h :: t) = if h=index_n2 then true else find t
-  | find nil =  false
-\end{verbatim}
-
-rewrite as:
-\begin{verbatim}
-fun find = List.exists (fn x => x = index_n2)
-\end{verbatim}
-\end{enumerate}
-\caption{Rewriting explicit recursion with library functions}
-\label{figure:fold}
-\end{figure}
-
-A good number of fold opportunities were very obvious, for example,
-Figure~\ref{figure:fold} example 1. However, sometimes,
-unlike the example shown, the expressions contained short-circuiting
-\texttt{orelse} or \texttt{andalso} subexpressions that provide
-a potential boost to efficiency.
-
-Sometimes, the recursive function can be rewritten in terms of another library function
-from the \texttt{List} structure, which itself could be written as fold.
-Figure~\ref{figure:fold} example 2 shows an example that can be rewritten with \texttt{exists}.
+On inspection, a good number of these fold opportunities cannot actually
+be written as fold because on encountering the null list, an error or
+some other imperative code is executed.
 
 As we will see in Section~\ref{subsec:list}, folds occur quite often in
 expert code, more often than the missed opportunities we were able to find.
@@ -347,16 +361,40 @@ That there are still a good number of unutilized fold opportunities
 suggests that they were overlooked by their authors,
 were left in place for a specific stylistic choice, or
 written in explicit recursive form for reasons of efficiency.
-As noted, efficiency is clearly a factor in many of the cases.
-For the remaining cases, since the equivalent fold does not
-look very complicated, we find it to be more likely that they were
-indeed missed opportunities, suggesting that even expert
-coders sometimes struggle with folds.
 
-Based on the potential advantages of using a fold, novices
-are encouraged to use folds. Based on the work of the experts,
-it is quite easy to miss an opportunity to use a fold, so
-beginners should remain vigilant for these opportunities.
+Reviewers suggested that it is not always a good idea to transform
+explicit recursion into a fold, particularly if the accumulator becomes
+too complex. However, they suggested that map and filter which are
+special cases of fold are always preferable to explicit recursion.
+
+We propose to identify opportunities for map and filter
+in a similar fashion to how we identified opportunities for fold.
+Here, in the recursive call, we look for the appearance of the cons operator (\texttt{::})
+immediately before the function name. In addition, we desire for the
+null list to appear as the right-hand side of one of the clauses.
+As before, we may not find all cases because of incorrect infix parsing.
+
+\begin{table}[h!]
+\centering
+\begin{tabular}{|l||c|c|}\hline
+Project & map/filter violations & Lines per instance \\ \hline\hline
+SML/NJ & 2 & 40551.0 \\
+MLKit & 76 & 4028.34 \\
+FoxNet & 2 & 4099.50 \\
+Til & 4 & 27453.2 \\
+MLton & 1 & 58226.0 \\ \hline
+\end{tabular}
+\caption{Missed opportunities to use map or filter}
+\label{table:mapfilter}
+\end{table}
+
+Table~\ref{table:mapfilter} shows the results of the analysis.
+Very few opportunities for using either map or filter
+exist. Indeed, the experts are very keen on using these fold variants
+instead explicit of explicit recursion.
+
+Our advice to beginners to is apply fold where it is reasonably
+simple to do so, but always be on the lookout to use map or filter.
 \subsection{Final thoughts on style}\label{subsec:stylethoughts}
 We conclude this section with a few thoughts on style.
 The takeaway for beginners from this section should not be
@@ -381,6 +419,12 @@ The return value indicates that the \texttt{while} expression's purpose is to pr
 with the expression in its body. The sequence of expressions evaluates only to the last in that sequence, indicating
 in a similar fashion, that all expressions in the list except for the last are evaluated for side-effects.
 
+In addition, one could use the \texttt{val} declaration to perform imperative actions.
+Generally, the results are assigned to unit or the wild card pattern:
+\begin{center}
+\texttt{val () = ...}\\
+\texttt{val \_ = ...}
+\end{center}
 Of course, one of the paradigms in writing functional programs is to avoid side-effects.
 Such a principled approach allows us to reason better about correctness and
 removes the constraints imposed by having a fixed order of execution \cite{Hug90}. Therefore,
@@ -388,37 +432,28 @@ it behooves us to examine whether such imperative features are necessary or avoi
 \subsubsection{Expressions with \texttt{while}}
 \begin{table}[h!]
 \centering
-\begin{tabular}{|l||c|c||c|c|}
+\begin{tabular}{|l||c|c|}
 \hline
-Project & \multicolumn{2}{c||}{Instances of \texttt{while}} & \multicolumn{2}{c|}{Lines per instance} \\ \cline{2-3}\cline{4-5}
- & total & outside of tests & total & outside of tests \\ \hline\hline
-SML/NJ & 0 & 0 & -- & --\\
-MLKit & 18 & 0 & 29463 & --\\
-FoxNet & 0 & 0 & -- & -- \\
-Til & 104 & 2 & 2137.66 & 11158.5 \\
-MLton & 20 & 0 & 8416.15 & --\\ \hline
+Project & Instances of \texttt{while} & Lines per instance \\ \hline\hline
+SML/NJ & 0 & --\\
+MLKit & 0 & --\\
+FoxNet & 0 & -- \\
+Til & 2 & 54906.5 \\
+MLton & 0 & --\\ \hline
 \end{tabular}
 \caption{Occurrences of \texttt{while} expressions}
 \label{table:while}
 \end{table}
-As we can see from Table~\ref{table:while}, two of the projects -- SML/NJ and FoxNet -- contain no occurrences
-of \texttt{while} loops at all.
+As we can see from Table~\ref{table:while}, all projects except for Til
+contain no \texttt{while} loops at all.
 
-MLKit contains a few handfuls of \texttt{while} usages, but these instances
-occur in regression tests for the \texttt{Word8Array} structure and not in the actual implementation of the compiler.
-The 20 occurrences of \texttt{while} expressions in MLton are likewise found in code for regression testing but
-also in MLton's benchmarks suite.
-
-Of the 104 instances of a \texttt{while} expression in the Til project,
-only 2 of these were found outside of a source file used for regression or benchmark testing.
-In both instances, the body of the \texttt{while} loop includes modifying a mutable reference, which justifies the use of
+In the two instances found in the Til project, the body of the \texttt{while}
+loop includes modifying a mutable reference, which justifies the use of
 an imperative feature. Getting rid of the while loops requires a design of how the code works so
 that we no longer need to keep track of mutable state and thus, is not very straightforward.
 
 Overall, we can observe that there are very few usages of \texttt{while} expressions
 in expert projects.
-When code used for testing is excluded from the analysis, we found only two uses
-of \texttt{while} expressions, which were used to modify mutable data.
 From the analysis, expert ML programmers seemed quite principled in avoiding imperative
 elements of ML. This is perhaps not surprising since they could have chosen
 to implement in any language but selected a functional language in the end.
@@ -430,10 +465,10 @@ We therefore recommend that beginners avoid using \texttt{while} loops completel
 \hline
 Project & Instances of expression lists & Lines per instance \\ \hline\hline
 SML/NJ & 1970 & 41.17 \\
-MLKit & 7900 & 67.13 \\
-FoxNet & 77 & 111.0 \\
-Til & 4414 & 50.37 \\
-MLton & 1907 & 88.27 \\ \hline
+MLKit & 3869 & 79.13 \\
+FoxNet & 68 & 120.6 \\
+Til & 1928 & 59.96 \\
+MLton & 641 & 90.84 \\ \hline
 \end{tabular}
 \caption{Occurrences of expressions lists}
 \label{table:explist}
@@ -466,7 +501,28 @@ I/O unsafely in imperative fashion.
 Arrays and references are two examples that \cite{Ull98} cites as way to ``violate the functional,
 side-effect-free style,'' but also noting that ``there are situations where programs cannot
 be made adequately efficient unless we are allowed to change some value bindings.''
+\subsubsection{Unit \texttt{val} and wildcard \texttt{val}}
+\begin{table}[h!]
+\centering
+\begin{tabular}{|l||c|c|}
+\hline
+Project & Instances of imperative \texttt{val} & Lines per instance \\ \hline\hline
+SML/NJ & 296 & 273.99 \\
+MLKit & 532 & 575.48 \\
+FoxNet & 70 & 117.13 \\
+Til & 427 & 257.17 \\
+MLton & 731 & 79.653 \\ \hline
+\end{tabular}
+\caption{Occurrences of imperative \texttt{val} bindings}
+\label{table:val}
+\end{table}
 
+Table~\ref{table:val} shows that imperative \texttt{val} bindings
+occur with frequency comparable to that of expression lists.
+Indeed, most of these occurrences are also for the purpose of I/O.
+Therefore, we conclude that experts use imperative \texttt{val} bindings
+to achieve execute one-time imperative code.
+\subsubsection{Final thoughts on imperative features}
 Imperative features are clearly unavoidable as evidenced in expert ML code. The experts do
 limit their uses of expression lists to a few general cases, mostly dominated by I/O.
 We conclude that the ML experts believe in the ``functional, side-effect-free'' style
@@ -482,32 +538,32 @@ in the \texttt{List} structure from the standard basis.
 \centering
 \begin{tabular}{|p{1in}||>{\centering\arraybackslash}p{0.62in}|>{\centering\arraybackslash\hspace{0pt}}p{0.9in}|>{\centering\arraybackslash\hspace{0pt}}p{0.6in}|>{\centering\arraybackslash\hspace{0pt}}p{0.5in}|>{\centering\arraybackslash\hspace{0pt}}p{0.6in}|}
 \hline
-Function & SML/NJ & MLKit & Foxnet & Til & MLton \\ \hline\hline
-\texttt{::} & 882 & 10250 & 97 & 2496 & 1585 \\
-\texttt{@} & \textbf{205} & \textbf{1040} & \textbf{18} & \textbf{476} & \textbf{241} \\
-\texttt{all} & 13 & 458 & 0 & 63 & 95 \\
-\texttt{app} & \textbf{331} & \textbf{1236} & 3 & \textbf{434} & \textbf{231} \\
-\texttt{drop} & 0 & 130 & 0 & 7 & 20 \\
-\texttt{exists} & 24 &  598 & 0 & \textbf{542} & 152 \\
-\texttt{filter} & 17 & 236 & 3 & 62 & 45 \\
-\texttt{find} & 48 & 258 & 0 & 64 & 48 \\
-folds\hspace{2in}(\texttt{foldl},\texttt{foldr}) & \textbf{237} (89,\textbf{148}) & \textbf{1220} (680,540) & \textbf{15}\hspace{1in}(7,8) & 75 (61,14) & 205 (129,76) \\
-\texttt{getItem} & 0 & 64 & 0 & 0 & 5 \\
-\texttt{hd} & 42 & 130 & 0 & \textbf{413} & 59 \\
-\texttt{last} & 8 & 116 & 0 & 198 & 48 \\
-\texttt{length} & \textbf{163} & \textbf{1188} & 3 & \textbf{429} & \textbf{340} \\
-\texttt{map} & \textbf{701} & \textbf{3314} & \textbf{61} & \textbf{1642} & \textbf{521} \\
-\texttt{mapPartial} & 7 & 32 & 0 & 0 & 10 \\
-\texttt{nth} & 5 & 74 & 0 & 32 & 21 \\
-\texttt{null} & 8 & 120 & 0 & 23  & 64 \\
-\texttt{partition} & 14  & 50 & 0 & 3 & 11 \\
-\texttt{rev} & 137 & 754 & \textbf{13} & 334 & \textbf{272} \\
-\texttt{revAppend} & 1 & 8 & 0 & 0 & 4 \\
-\texttt{tabulate} & 1 & 206 & 0 & 24  & 100 \\
-\texttt{take} & 6 & 130 & 0 & 10 & 23 \\
-\texttt{tl} & 54 & 200 & 0 & \textbf{505} & 63 \\\hline\hline
-Total & 2904 & 21812 & 213 & 7832 & 4163 \\
-Lines per call & 27.928 & 24.314 & 40.117 & 28.386 & 40.433 \\\hline
+Function & SML/NJ & MLKit & FoxNet & Til & MLton \\ \hline\hline
+\texttt{::} & 882 & 6350 & 97 & 801 & 372 \\
+\texttt{@} & \textbf{205} & \textbf{602} & \textbf{18} & \textbf{248} & \textbf{69} \\
+\texttt{all} & 13 & 76 & 0 & 53 & 35 \\
+\texttt{app} & \textbf{331} & \textbf{728} & 3 & \textbf{340} & \textbf{45} \\
+\texttt{drop} & 0 & 28 & 0 & 7 & 2 \\
+\texttt{exists} & 24 &  96 & 0 & 25 & 28 \\
+\texttt{filter} & 17 & 138 & 3 & 4 & 8 \\
+\texttt{find} & 48 & 130 & 0 & 48 & 13 \\
+folds\hspace{2in}(\texttt{foldl},\texttt{foldr}) & \textbf{237} (89,\textbf{148}) & \textbf{920} (522,398) & \textbf{15}\hspace{1in}(7,8) & \textbf{171} (59,112) & \textbf{57} (30,27) \\
+\texttt{getItem} & 0 & 20 & 0 & 0 & 2 \\
+\texttt{hd} & 42 & 44 & 0 & 133 & 16 \\
+\texttt{last} & 8 & 78 & 0 & 2 & 22 \\
+\texttt{length} & \textbf{163} & 578 & 3 & 119 & \textbf{87} \\
+\texttt{map} & \textbf{701} & \textbf{1724} & \textbf{60} & \textbf{1029} & \textbf{108} \\
+\texttt{mapPartial} & 7 & 26 & 0 & 0 & 3 \\
+\texttt{nth} & 5 & 4 & 0 & 6 & 8 \\
+\texttt{null} & 8 & 50 & 0 & 1  & 20 \\
+\texttt{partition} & 14  & 14 & 0 & 3 & 2 \\
+\texttt{rev} & 137 & 472 & \textbf{13} & \textbf{178} & \textbf{120} \\
+\texttt{revAppend} & 1 & 0 & 0 & 0 & 1 \\
+\texttt{tabulate} & 1 & 18 & 0 & 0  & 13 \\
+\texttt{take} & 6 & 10 & 0 & 10 & 1 \\
+\texttt{tl} & 54 & 114 & 0 & \textbf{171} & 26 \\\hline\hline
+Total & 2904 & 12220 & 212 & 3349 & 1058 \\
+Lines per call & 27.928 & 25.054 & 38.674 & 32.790 & 55.034 \\\hline
 \end{tabular}
 \caption{Calls to functions from the \texttt{List} structure (\texttt{concat} omitted). Bolded entries each account for more than 5\% of the total number of occurrences in a project.}
 \label{table:list}
@@ -515,7 +571,7 @@ Lines per call & 27.928 & 24.314 & 40.117 & 28.386 & 40.433 \\\hline
 
 Before we discuss the analysis, we should highlight some salient points.
 Since the easiest way to create lists of arbitrary size is to the use the cons operator (\texttt{::}),
-this operator naturally occurs the most, accounting for, in some cases, up to almost half
+this operator naturally occurs the most, accounting for, in some cases, half
 the occurrences of function calls. But we don't gain much insight from looking at this operator
 because it is so common and critical to working with lists. It should also be noted
 that we are excluding any occurrences of the cons operator used in pattern matching.
@@ -528,21 +584,21 @@ by the number of lines) in every expert project. The normalized frequency
 basically stay constant, relative to each other, even when we exclude the occurrences of the cons operator.
 
 The values in bold indicate that a function accounts for more than 5\% of all function calls to the \texttt{List} structure.
-We see that list concatenation (\texttt{@}) and \texttt{map} break the threshold in all 5 projects. Between the
-two, \texttt{map} is more common, occurring almost as frequency as the cons operator in some cases. This
+We see that folds (both left and right), list concatenation (\texttt{@}), and \texttt{map} break the threshold in all 5 projects. Between them,
+\texttt{map} is more common, occurring almost as frequency as the cons operator in some cases. This
 suggests possibly that expert coders in ML are transforming data in bulk within a list container.
 
-Other functions of note are \texttt{length} and \texttt{app}, both of which each account for more than 5\% of
+Other functions of note are \texttt{rev} and \texttt{app}, both of which each account for more than 5\% of
 occurrences in four of five projects. The \texttt{app} is particularly interesting because it can be
 considered an imperative version of \texttt{map}, which we have observed is called quite often. We hypothesize
 that not only do programmer transform data in bulk as a list with \texttt{map}, the execute side-effects
-in bulk in a list with \texttt{app}. The \texttt{length} function's popularity suggests that
-the cardinality of a list is often more important than its contents.
+in bulk in a list with \texttt{app}. The reversal function (\texttt{rev}) allows one to transform a list
+to a dual form that may be more useful for a given application.
 
-The pair of fold functions, taken together, break the threshold on three of five projects.
+The pair of fold functions, taken together, break the threshold on all five projects.
 This is perhaps not surprising since a fold is an excellent way to aggregate data in a list
 into another value, possibly even another list. Indeed, many of the functions on lists
-including \texttt{map} and \texttt{length} could be rewritten using a fold.
+including \texttt{map} and \texttt{app} could be rewritten using a fold.
 
 Finally, we point out that the Til project makes heavy use of the head (\texttt{hd}) and tail (\texttt{tl})
 functions which respectively return the first element and all but the first element in a list.
@@ -569,10 +625,10 @@ abtraction and modularity by using structures, signatures, and functors.
 \hline
 Project & Files with module declarations & Fraction & Files with only module declarations & Fraction \\ \hline\hline
 SML/NJ & 297 & 0.99 & 297 & 0.99 \\
-MLKit & 1442 & 0.63 & 1590 & 0.70 \\
-Foxnet & 29 & 0.39 & 31 & 0.42 \\
-Til & 466 & 0.76 & 477 & 0.78 \\
-MLton & 484 & 0.57 & 576 & 0.68 \\ \hline
+MLKit & 1308 & 0.99 & 1270 & 0.96 \\
+FoxNet & 30 & 0.42 & 29 & 0.40 \\
+Til & 445 & 0.97 & 443 & 0.96 \\
+MLton & 397 & 0.94 & 386 & 0.91 \\ \hline
 \end{tabular}
 \caption{Proportion of files that, at top level, contain module declarations or only contain module declarations.}
 \label{table:module}
@@ -580,16 +636,14 @@ MLton & 484 & 0.57 & 576 & 0.68 \\ \hline
 
 Table~\ref{table:module} shows what fraction of files define a structure, signature, or functor at top level
 and what fraction of files define only a structure, signature, or functor at top level.
-We find that in larger projects, more than half of all files contain only structure, signature, or functor
-definitions at top level. And in the larger projects, we see that an even higher fraction
-of files (from almost 70\% to 99\%) have at least one such definition at top level.
-The smaller Foxnet project stands out as having a smaller fraction in both cases.
+We find that in larger projects, almost every single file contains a functor, signature, or structure
+definitions at top level. Nearly as many have at least one such declaration in a file.
+The smaller FoxNet project stands out as having a smaller fraction in both cases.
 
 We believe that these data reflect that as projects get large, expert ML coders
-make heavy use of the ML module system to help manage the complexity.
-Due to the heavy reliance on the ML module system (in the case of SML/NJ, all
-but two files have anything other than a functor, signature, or structure definition
-at top level), we suggest that beginners make heavy use of the ML module system
+make very heavy use of the ML module system to help manage the complexity.
+Due to the heavy reliance on the ML module system,
+we suggest that beginners make heavy use of the ML module system
 to impart modularity and some level of abstraction to their work, particularly
 when the projects they are working on grow in size.
 \subsubsection{Helper Functions in \texttt{let} Expressions and \texttt{local} Declarations}\label{subsubsec:let}
@@ -610,10 +664,10 @@ or \texttt{local} construction.
 \hline
 Project & Function declarations in \texttt{let} & Function declarations in \texttt{local} & Sum & Total Function Declarations & Fraction \\ \hline\hline
 SML/NJ & 2652 & 192 & 2844 & 4866 & 0.58 \\
-MLKit & 12466 & 6417 & 18883 & 28267 & 0.67 \\
-Foxnet & 103 & 19 & 122 & 532 & 0.23 \\
-Til & 4431 & 6373 & 10804 & 15455 & 0.70 \\
-MLton & 2837 & 719 & 3556 & 10842 & 0.33 \\\hline
+MLKit & 6130 & 2682 & 8812 & 24841 & 0.35 \\
+FoxNet & 103 & 19 & 122 & 530 & 0.23 \\
+Til & 1856 & 500 & 2356 & 5627 & 0.42 \\
+MLton & 1004 & 252 & 1256 & 3533 & 0.36 \\\hline
 \end{tabular}
 \caption{Functions declared inside of \texttt{let} expressions}
 \label{table:funlet}
@@ -622,10 +676,11 @@ MLton & 2837 & 719 & 3556 & 10842 & 0.33 \\\hline
 Table~\ref{table:funlet} shows how functions are declared in side of \texttt{let} or \texttt{local}
 constructs, and what fraction that represents out of all function declarations in the
 entire project.
-In the larger four projects, one-third to two-thirds of all function declarations occur
+In the larger four projects, at least one-third of all function declarations occur
 inside of a local or a let binding. As argued above, these are likely to be helper functions.
-In other words, the experts are quite fond of helper functions, most likely for
-the reasons we previously mentioned. Beginners are encouraged for follow their example.
+In other words, the experts are quite fond of helper functions if one out of every three functions
+are helper functions.
+Beginners are encouraged for follow their example.
 \section{CONCLUSIONS AND CONTRIBUTIONS}\label{sec:future}
 The key contributions of this project are three-fold. First, we
 identified some features of ML expertise. These features are
@@ -636,13 +691,15 @@ Second, we've distilled some useful tips for novices based
 on our discoveries.
 \begin{enumerate}
 \item No consensus on tabs vs.\ spaces. Pick one and be consistent.
-\item Keep under 80 columns of text. Check often.
+\item Try to keep under 80 columns of text, but it's OK go over occasionally.
 \item Rewrite if expressions if one of the branches is a boolean literal or if the test is \texttt{not} applied a boolean expression
-\item Use folds when possible.
+\item Folds are nice if you appropriate, but experts almost always use \texttt{map} and \texttt{filter} when they can.
 \item Avoid while loops.
 \item Expression lists are OK for I/O.
-\item Use list library functions when possible.
+\item Imperative \texttt{val} bindings are OK for I/O.
+\item Use list library functions when possible, especially \texttt{map} and folds.
 \item Pattern match on lists instead of using \texttt{hd} or \texttt{tl}
+\item Use the ML module system.
 \item Use helper functions.
 \end{enumerate}
 
@@ -651,6 +708,8 @@ can use to evaluate how well they are performing on the above
 eight points. The primary audience is intended to be novices,
 who can receive feedback on how well the certain features
 of their code mirror those of experts.
+\section*{SUPPORTING CODE}
+Supporting source code is available on GitHub via \url{http://www.github.com/zhelu/smlproject}.
 \begin{thebibliography}{99}
 \bibitem[Ayerbe and Vazquez 1998]{Aye98} Ayerbe, A., Vazquez, I. (1998) Software Products Quality Improvement with a Programming Style Guide and a Measurement Process. In \emph{Proceedings 22nd Annual International Computer Software and Applications Conference (COMPSAC'98)}. 172--178.
 \bibitem[Binkley 2007]{Bin07} Binkley, D., 2007. Source Code Analysis: A Road Map. In \emph{Workshop on the Future of Software Engineering (FOSE'07)}. Minneapolis, MN. 104--119. Washington, D.C.: IEEE Computer Society.
