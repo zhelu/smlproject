@@ -409,9 +409,6 @@ and maintain, and then being as consistent as possible
 in applying the style of his or her choice.
 \section{SYNTACTIC FORMS}\label{sec:syntax}
 \subsection{Imperative Features}\label{subsec:imper}
-In Prof. Norman Ramsey's class on programming languages, one easy way to lose points
-on any assignment was the unnecessary use \emph{imperative} language features when programming in a \emph{functional} language.
-\footnote{See, for example: \url{http://www.cs.tufts.edu/comp/105-2013s/homework/scheme.html}, specifically, the section titled ``Dire Warnings''}
 In Standard ML, there are two main imperative constructs in terms of expressions:
 (1)~the \texttt{while} expression and (2)~a list of expression separated by semicolons (similar to the \texttt{begin...end} syntax of Pascal) \cite{Ull98}.
 The former has the form \texttt{while <boolean-expression> do <expression>} and always returns a value of unit type.
@@ -688,10 +685,18 @@ selected not based on what experts recommend but rather on how they
 write their own code.
 
 Second, we've distilled some useful tips for novices based
-on our discoveries.
+on our discoveries. We've grouped these items into three main categories:
+(1)~typographic structure, that is, how the code physically looks,
+(2)~syntactic structure, that is, what and when certain language constructs are used in any source file, and
+(3)~global structure, that is, how code is grouped and organized.
+\begin{enumerate}
+\item Typographic Structure
 \begin{enumerate}
 \item No consensus on tabs vs.\ spaces. Pick one and be consistent.
 \item Try to keep under 80 columns of text, but it's OK go over occasionally.
+\end{enumerate}
+\item Syntactic Structure
+\begin{enumerate}
 \item Rewrite if expressions if one of the branches is a boolean literal or if the test is \texttt{not} applied a boolean expression
 \item Folds are nice if you appropriate, but experts almost always use \texttt{map} and \texttt{filter} when they can.
 \item Avoid while loops.
@@ -699,8 +704,12 @@ on our discoveries.
 \item Imperative \texttt{val} bindings are OK for I/O.
 \item Use list library functions when possible, especially \texttt{map} and folds.
 \item Pattern match on lists instead of using \texttt{hd} or \texttt{tl}
+\end{enumerate}
+\item Global Structure
+\begin{enumerate}
 \item Use the ML module system.
 \item Use helper functions.
+\end{enumerate}
 \end{enumerate}
 
 Finally, we've created a set of tools that programmer of all levels

@@ -4,11 +4,11 @@ signature VIOLATION = sig
   (* given a filename, create a sourcemap tracking line breaks *)
   val getSourceMap : string -> SourceMap.sourcemap
 
-  (* violations come in two forms.
-   * offside violations where a declaration/expression at some line contains
-   * a violation of a declaration/expression at another line
-   * (or) a violation where we've exceeded the maximum width at a line *)
-  datatype violation = OFFSIDE of { line: int, inside: int }
+  (* All of the violations
+   * If the value constructor is called with one argument, it's the line # of
+   * the violation. In the case of OFFSIDE, the outside line contains the
+   * inner violation for easy reference. *)
+  datatype violation = OFFSIDE of { outsideLine: int, insideLine: int }
                      | WIDTH of int
                      | TAB of int
                      | IF of int
@@ -24,8 +24,6 @@ signature VIOLATION = sig
   (* get a list of tab violations from the input source file *)
   val getTabViolations : string -> violation list
 
-  (* get a list of offside violations from the input source file *)
-  val getOffsideViolations : string -> violation list
 
   (* get a list of if violations from the input source file *)
   val getIfViolations : string -> violation list
@@ -43,7 +41,7 @@ end
 
 structure Violation :> VIOLATION = struct
 
-  datatype violation = OFFSIDE of { line: int, inside: int }
+  datatype violation = OFFSIDE of { outsideLine: int, insideLine: int }
                      | WIDTH of int
                      | TAB of int
                      | IF of int
@@ -140,7 +138,8 @@ structure Violation :> VIOLATION = struct
           val {column = c',...} = loc'
         in
           if c' < c then
-            (loc', OFFSIDE {line = #line(loc), inside = #line(loc')} :: acc)
+            (loc', OFFSIDE {outsideLine = #line(loc),
+                            insideLine = #line(loc')} :: acc)
           else (loc', acc)
         end
       (* walkStrExp extracts declarations from a structure
@@ -188,9 +187,14 @@ structure Violation :> VIOLATION = struct
             List.foldl (fn (exp, acc) => walkExp loc acc sm exp)
               acc exps
         | walkExp loc acc sm (Ast.FlatAppExp items) =
+            let
+              val ({item = Ast.MarkExp (x, _),...}:: xs) = items
+              val acc' = walkExp loc acc sm x
+            in
             List.foldl
               (fn ({item = exp, ...}, acc) => walkExp loc acc sm exp)
-              acc items
+              acc' xs
+            end
         | walkExp loc acc sm (Ast.FnExp rules) =
             List.foldl
               (fn (Ast.Rule {exp = e,...}, a) => walkExp loc a sm e) acc rules
@@ -221,15 +225,18 @@ structure Violation :> VIOLATION = struct
               val acc' = walkExp loc acc sm t
               val acc'' = walkExp loc acc' sm th
             in
-              walkExp loc acc'' sm el
+              (case el of
+                 Ast.MarkExp (i as (Ast.IfExp _), _) =>
+                   walkExp loc acc'' sm i
+               | _ => walkExp loc acc'' sm el)
             end
-        | walkExp loc acc sm (Ast.AndalsoExp (e1, e2)) =
+        | walkExp loc acc sm (Ast.AndalsoExp (Ast.MarkExp (e1,_), e2)) =
             let
               val acc' = walkExp loc acc sm e1
             in
               walkExp loc acc' sm e2
             end
-        | walkExp loc acc sm (Ast.OrelseExp (e1, e2)) =
+        | walkExp loc acc sm (Ast.OrelseExp (Ast.MarkExp (e1,_), e2)) =
             let
               val acc' = walkExp loc acc sm e1
             in
@@ -274,9 +281,16 @@ structure Violation :> VIOLATION = struct
             traverseDecs loc' acc' sm m
           end
       | Ast.SeqDec decs =>
-           List.foldl (fn (d, acc') => traverseDecs loc acc' sm d)
-             acc decs
-      | Ast.LocalDec (locals, body) =>
+          (case length decs of
+             0 => acc
+           | _ => let
+                    val (Ast.MarkDec (x, _) :: xs) = decs
+                    val acc' = traverseDecs loc acc sm x
+                  in
+                    List.foldl (fn (d, acc') => traverseDecs loc acc' sm d)
+                      acc' xs
+                  end)
+      | Ast.LocalDec (Ast.MarkDec (locals, _), body) =>
           let 
             val acc' = traverseDecs loc acc sm locals
           in
@@ -304,7 +318,8 @@ structure Violation :> VIOLATION = struct
   val _ = op traverseDecs : SourceMap.sourceloc -> violation list ->
                             SourceMap.sourcemap -> Ast.dec -> violation list
 
-  (* see signature *)
+  (* get a list of offside violations from the input source file
+   * This doesn't quite work right. *)
   fun getOffsideViolations filename =
     let
       val sm = getSourceMap filename
@@ -315,6 +330,9 @@ structure Violation :> VIOLATION = struct
     in
       traverseDecs loc [] sm parseTree
     end
+
+  (* type check *)
+  val _ = op getOffsideViolations : string -> violation list
 
   (* see signature *)
   fun getIfViolations filename =
