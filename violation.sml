@@ -432,11 +432,10 @@ structure Violation :> VIOLATION = struct
       val width = getWidthViolations filename
       val tab = getTabViolations filename
       val ifs = getIfViolations filename
-      val offside = getOffsideViolations filename
       val folds = getFoldViolations filename
       val mapfilter = getMapFilterViolations filename
     in
-      width @ tab @ ifs @ offside @ folds @ mapfilter
+      width @ tab @ ifs @ folds @ mapfilter
     end
 
 end
