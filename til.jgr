@@ -1,0 +1,78 @@
+newgraph
+xaxis
+min 69.1 max 100.9
+size 3.5
+hash 1 mhash 0 no_auto_hash_labels
+yaxis
+min 0 max 0.0860371722838
+size 2
+precision 3
+newcurve
+marktype xbar cfill 1 0 0 marksize 0.8
+pts
+70 0.0430185861419
+71 0.0363527086957
+72 0.032145556537
+73 0.0276014679501
+74 0.0243960186863
+75 0.0204529518363
+76 0.0175935453908
+77 0.0151530328832
+78 0.0124939670167
+79 0.0105087740067
+80 0.0084416234872
+81 0.0071211969439
+82 0.00609217487911
+83 0.00516332310382
+84 0.00453498219701
+85 0.00387932212033
+86 0.00354238569204
+87 0.00308706619435
+88 0.00261353391675
+89 0.00235855499804
+90 0.00208536329943
+91 0.0018941291104
+92 0.0016573629716
+93 0.00146612878257
+94 0.00126578820358
+95 0.0010654476246
+96 0.000937958165245
+97 0.000865107045614
+98 0.000792255925983
+99 0.000746723976214
+100 0.000692085636491
+xaxis
+hash_label at 70 : 70
+hash_label at 71 : 71
+hash_label at 72 : 72
+hash_label at 73 : 73
+hash_label at 74 : 74
+hash_label at 75 : 75
+hash_label at 76 : 76
+hash_label at 77 : 77
+hash_label at 78 : 78
+hash_label at 79 : 79
+hash_label at 80 : 80
+hash_label at 81 : 81
+hash_label at 82 : 82
+hash_label at 83 : 83
+hash_label at 84 : 84
+hash_label at 85 : 85
+hash_label at 86 : 86
+hash_label at 87 : 87
+hash_label at 88 : 88
+hash_label at 89 : 89
+hash_label at 90 : 90
+hash_label at 91 : 91
+hash_label at 92 : 92
+hash_label at 93 : 93
+hash_label at 94 : 94
+hash_label at 95 : 95
+hash_label at 96 : 96
+hash_label at 97 : 97
+hash_label at 98 : 98
+hash_label at 99 : 99
+hash_label at 100 : 100
+hash_labels hjl vjc font Helvetica rotate -90
+yaxis label : Fraction of lines
+title : Fraction of Lines With Minimum Width (Til)
