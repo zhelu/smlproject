@@ -4,7 +4,8 @@ min 69.1 max 100.9
   size 3.5
   hash 1 mhash 0 no_auto_hash_labels
 yaxis
-  min 0 max 0.115653886606
+  min 0.00627788629252 max 0.115653886606
+  log
   size 2
   precision 2
 newcurve
@@ -60,14 +61,15 @@ xaxis
   hash_label at 100 : 100
   hash_labels hjl vjc font Helvetica rotate -90
 yaxis label : Fraction of lines
-title : Fraction of Lines With Minimum Width (MLKit)
+title : Log Plot of Fraction of Lines With Minimum Width (MLKit)
 newgraph
 xaxis
   min 69.1 max 100.9 nodraw
   size 3.5
   hash 1 mhash 0 no_auto_hash_labels
 yaxis
-  min 0 max 0.115653886606
+  min 0.00627788629252 max 0.115653886606
+  log
   size 2
   precision 0
   draw_at 100.9 hash_scale +1.0
@@ -75,6 +77,8 @@ yaxis
   no_auto_hash_marks
 hash_at 0.0979899005076
 hash_label at 0.0979899005076 : 30000
-hash_at 0.0489949502538
-hash_label at 0.0489949502538 : 15000
+hash_at 0.0244974751269
+hash_label at 0.0244974751269 : 7500
   label : Number of Lines
+newstring
+x 90 y 0.057826943303 : R-squared = 0.9988

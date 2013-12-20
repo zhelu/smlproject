@@ -1,7 +1,5 @@
 *.pdf
 *.djvu
-*.eps
-*.jgr
 *.txt
 *.gv
 MLKit\ 4.3.7/
@@ -10,5 +8,11 @@ til/
 mlton-master/
 foxnet/
 .cm/
+.*.swp
 project.*
-test.sml
+test.*
+til-tab/
+MLKit-tab/
+mlton-tab/
+smlnj-tab/
+foxnet-tab/

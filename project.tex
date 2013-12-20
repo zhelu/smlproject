@@ -232,9 +232,9 @@ and we examined limits from 70 columns to 100 columns, inclusive.
 \begin{figure}[h!]
 \centering
 \begin{tabular}{cc}
-\includegraphics[scale=0.72]{smlnj.eps} & \includegraphics[scale=0.72]{mlkit.eps} \\
-\includegraphics[scale=0.72]{foxnet.eps} & \includegraphics[scale=0.72]{til.eps} \\
-\includegraphics[scale=0.72]{mlton.eps} &
+\includegraphics[scale=0.68]{smlnj.eps} & \includegraphics[scale=0.68]{mlkit.eps} \\
+\includegraphics[scale=0.68]{foxnet.eps} & \includegraphics[scale=0.68]{til.eps} \\
+\includegraphics[scale=0.68]{mlton.eps} &
 \end{tabular}
 \caption{Fraction of lines at least as wide as a given limit}
 \label{fig:width}
@@ -244,8 +244,8 @@ Figure~\ref{fig:width} shows the results of our analysis. In the SML/NJ project,
 we notice an ``elbow'' in the plot around 80 columns. This inflection represents
 an effort to limit the maximum width of lines. The tail of the inverse cumulative
 histogram represents the failure to stay within the intended limit. We notice
-also such as ``elbow'' in both the Til and the MLton projects, which we hypothesize
-to mean that each also conforms generally to an 80-column limit.
+also such as ``elbow'' in the MLton project, which we hypothesize
+to mean that it also conforms generally to an 80-column limit.
 
 FoxNet a more interesting profile in its inverse cumulative histogram. We see
 two discontinuities: one at 80 columns and another at 88 columns, another popular width limit.
@@ -254,9 +254,23 @@ not as smooth as in other projects. We must therefore be careful not to attribut
 artificial discontinuities caused by data discreteness to actual features. More
 investigation on this required.
 
-Finally, the MLKit project is the most interesting in that we see no inflection in the
-inverse cumulative histogram at all. This implies that the implementers of MLKit made little
-effort to limit line width at all!
+Finally, the MLKit project and Til project show no inflection in the
+inverse cumulative histogram at all. This implies that the implementers of MLKit
+and Til made little effort to limit line width at all! Indeed, when we
+look at the same plots on a log scale, we see a very linear plot,
+whereas the other plots are decidedly less linear (more sigmoid for SML/NJ and MLton).
+Figure~\ref{fig:log-width} shows the same data plotted on a logarithmic scale.
+
+\begin{figure}[h!]
+\centering
+\begin{tabular}{cc}
+\includegraphics[scale=0.68]{log-smlnj.eps} & \includegraphics[scale=0.68]{log-mlkit.eps} \\
+\includegraphics[scale=0.68]{log-foxnet.eps} & \includegraphics[scale=0.68]{log-til.eps} \\
+\includegraphics[scale=0.68]{log-mlton.eps} &
+\end{tabular}
+\caption{Log plot of fraction of lines at least as wide as a given limit. $R^{2}$ value shown for a least-squares linear fit of the logarithm.}
+\label{fig:log-width}
+\end{figure}
 
 Clearly, not all experts conform to the 80-column rule.
 In addition, even those we appear to have an 80-column rule ignore it approximately 1\% of the time.
@@ -344,6 +358,8 @@ We won't concern ourselves with the order of the pattern match because either th
 are mutually exclusive (e.g., \texttt{[]} or a cons cell) or there is a redundant match
 and the compiler will throw an error. We, however, cannot claim to be able to identify all
 fold opportunities correctly because of our inability to correctly parse infix expressions.
+Indeed, as we will see later, some of the explicit recursions identified as missed
+opportunities are not opportunities to use fold at all!
 
 We see from Table~\ref{table:style} that missed opportunities for fold occur more often
 than opportunities to rewrite \texttt{if} expressions. Perhaps this is
@@ -352,16 +368,87 @@ rewriting a function as a fold over a list can be much more challenging.
 And when a fold is not obvious, the programmer is surely tempted to just
 get the job done with a recursive function definition.
 
-On inspection, a good number of these fold opportunities cannot actually
+We looked at some random
+samples of these violations. Three are shown in Figure~\ref{fig:fold}.
+A good number of these fold opportunities cannot actually
 be written as fold because on encountering the null list, an error or
-some other imperative code is executed.
+some other imperative code is executed. Example 1 falls under this category:
+we see that the imperative function \texttt{bug} is executed
+on a null list and potentially even as we are traversing the list.
+That this example was found is more a comment on the imcompleteness
+of our search.
 
+In example 2, we cannot easily use a fold because there is look ahead
+in the code. The forced use of fold will likely result in a complicated
+accumulator which ultimately makes the code more complicated not less so.
+
+Finally, in example 3, we see a example where we might consider
+using the \texttt{exists} library function from the \texttt{List}
+structure. While \texttt{exists} can be written as a fold,
+it is inefficient to use a fold on a long list because
+we can take advantage of the short-circuiting behavior
+of the shown in this explicitly recursive function.
+
+Thus, there are clearly cases where we could use a fold,
+but it is not appropriate to do so.
+\begin{figure}
+\begin{enumerate}
+\item
+\begin{verbatim}
+fun try ((d as {name,rep,domain})::r) =
+      (case rep of
+         A.TAGGED i => if chk(gettag, i) then d else try r
+       | A.CONSTANT i => if chk(Obj.toInt, i) then d else try r
+       | A.TRANSPARENT => d
+       | A.UNTAGGED => if Obj.boxed obj then d else try r
+       | A.REF => d
+       | A.LISTCONS => if (Obj.boxed obj) then d else try r
+       | A.LISTNIL => if chk(Obj.toInt, 0) then d else try r
+       | A.SUSP _ => d  (* LAZY *)
+       | _ => bug "switch: funny datacon"
+       (* end case *))
+  | try [] = bug "switch: none of the datacons matched"
+\end{verbatim}
+\item
+\begin{verbatim}
+fun parseArgs [] acc = List.rev acc
+  | parseArgs (x::xr) acc =
+      if not (!state)
+        then
+          case keyword x
+            of NONE => parseArgs xr acc
+             | SOME Unknown => parseArgs xr (Data.Default x :: acc)
+             | SOME (Eq a) => parseArgs xr (a::acc)
+             | SOME f => case xr of
+                           [] =>
+                             raise
+                               Data.BadArg (x ^ " takes one argument")
+                         | (x'::xr') =>
+                             parseArgs xr'
+                               ((data x (toArgKind f) (next x x')) ::
+                                   acc)
+        else parseArgs xr (Data.Default x :: acc)
+\end{verbatim}
+\item
+\begin{verbatim}
+fun find (h :: t) = if h=index_n2 then true else find t
+  | find nil =  false
+\end{verbatim}
+\end{enumerate}
+\caption{Examples of ``missed fold opportunities''. Example 1 cannot be written as a fold
+because there is not initial accumulator.
+Example 2 could possibly be written as a fold but would require a complicated accumulator. Example 3
+can be written as a fold but would then not benefit from short-circuit testing.}
+\label{fig:fold}
+\end{figure}
 As we will see in Section~\ref{subsec:list}, folds occur quite often in
 expert code, more often than the missed opportunities we were able to find.
 That there are still a good number of unutilized fold opportunities
 suggests that they were overlooked by their authors,
 were left in place for a specific stylistic choice, or
 written in explicit recursive form for reasons of efficiency.
+Our random sample above suggests that explicit recursion
+is generally used for a reason.
 
 Reviewers suggested that it is not always a good idea to transform
 explicit recursion into a fold, particularly if the accumulator becomes
@@ -390,12 +477,62 @@ MLton & 1 & 58226.0 \\ \hline
 \end{table}
 
 Table~\ref{table:mapfilter} shows the results of the analysis.
-Very few opportunities for using either map or filter
-exist. Indeed, the experts are very keen on using these fold variants
+Very few opportunities for using either map or filter exist.
+Indeed, the experts are very keen on using these fold variants
 instead explicit of explicit recursion.
+We show (in section \ref{subsec:list})
+that \texttt{map} and \texttt{filter} are called quite frequently.
+A random sampling of the violating declarations suggest that
+these missed opportunities are generally truly missed opportunities.
+Quite interestingly also, FoxNet seems to implement its own library
+of utility functions, and our analysis found two of their
+implementations of \texttt{filter} (\texttt{map} was not implemented).
+Thus, we suggest that our analysis is quite sound.
 
 Our advice to beginners to is apply fold where it is reasonably
-simple to do so, but always be on the lookout to use map or filter.
+simple to do so, but always be on the lookout to use \texttt{map} or \texttt{filter}
+whenever possible.
+\subsection{Offside violations}\label{subsec:offside}
+The \emph{offside rule} states that if a declaration or expression (or any language construct)
+has to be split across multiple lines, later lines ought to be more indented relative to
+the first line.\footnote{See: \url{http://www.cs.tufts.edu/comp/105-2013s/details.html}}
+The SML/NJ parser includes nodes with the name \texttt{MarkX} where \texttt{X} is
+one of the syntactic categories (e.g., \texttt{MarkDec} for declaration, \texttt{MarkExp} for expression,
+etc.). These are value constructors for the datatypes that represent the corresponding
+syntactic category and their arguments indicate the character position for both the start and the
+end of the enclosed syntactic structure. When we obtain a mapping from character position
+to corresponding line and column within a source file (possible via the \texttt{SourceMap} structure),
+we can attempt to examine the indentation of subexpressions or subdeclarations relative to
+the indentations of their parents.
+
+We ran into two complications with the analysis. The first is that when we have tabs present,
+\texttt{SourceMap} treats the tab character has having a width of 1. Clearly,
+this is not what we want. However, this problem is easily remedied 
+by replacing tab characters with an equivalent number of spaces.
+We can try to replace the tab with 2, 4, or 8 spaces and examine how
+the offside rule is followed in each set of replacements.
+
+The more serious, and yet unsolved, complication is that if the first line of a construct
+is indented, \texttt{SourceMap} returns the level of indentation
+for the entire construct as the indentation for the first line.
+Thus, if the first line of the construct is too far indented, all subsequent
+lines get flagged for an offside violation, but the issue is most likely
+with the incorrect indentation of the first line. We must address this
+issue in future work before we can accurately report the number
+of offside violations in the code.
+\begin{figure}[bh!]
+\centering
+\begin{verbatim}
+fun example x =
+  let
+      val _ = this line is indented too far to the right
+    val _ = this line throws an offside violation
+    val _ = so does this line
+    ...
+\end{verbatim}
+\caption{Trouble detecting violations of the offside rule}
+\label{fig:offside}
+\end{figure}
 \subsection{Final thoughts on style}\label{subsec:stylethoughts}
 We conclude this section with a few thoughts on style.
 The takeaway for beginners from this section should not be
