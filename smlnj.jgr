@@ -60,7 +60,7 @@ xaxis
   hash_label at 100 : 100
   hash_labels hjl vjc font Helvetica rotate -90
 yaxis label : Fraction of lines
-title : Fraction of Lines With Minimum Width (SML/NJ)
+title : SML/NJ
 newgraph
 xaxis
   min 69.1 max 100.9 nodraw
@@ -73,8 +73,14 @@ yaxis
   draw_at 100.9 hash_scale +1.0
   no_auto_hash_labels
   no_auto_hash_marks
-hash_at 0.0739809129245
-hash_label at 0.0739809129245 : 6000
-hash_at 0.0369904564622
-hash_label at 0.0369904564622 : 3000
+
+
+  hash_at 0.0739809129245
+  hash_label at 0.0739809129245 : 6000
+  hash_at 0.0554856846933
+  hash_label at 0.0554856846933 : 4500
+  hash_at 0.0369904564622
+  hash_label at 0.0369904564622 : 3000
+  hash_at 0.0184952282311
+  hash_label at 0.0184952282311 : 1500
   label : Number of Lines

@@ -60,7 +60,7 @@ xaxis
   hash_label at 100 : 100
   hash_labels hjl vjc font Helvetica rotate -90
 yaxis label : Fraction of lines
-title : Fraction of Lines With Minimum Width (Til)
+title : Til
 newgraph
 xaxis
   min 69.1 max 100.9 nodraw
@@ -73,8 +73,15 @@ yaxis
   draw_at 100.9 hash_scale +1.0
   no_auto_hash_labels
   no_auto_hash_marks
-hash_at 0.0364255598153
-hash_label at 0.0364255598153 : 4000
-hash_at 0.0182127799077
-hash_label at 0.0182127799077 : 2000
+
+  hash_at 0.0455319497692
+  hash_label at 0.0455319497692 : 5000
+  hash_at 0.0364255598153
+  hash_label at 0.0364255598153 : 4000
+  hash_at 0.0273191698615
+  hash_label at 0.0273191698615 : 3000
+  hash_at 0.0182127799077
+  hash_label at 0.0182127799077 : 2000
+  hash_at 0.00910638995383
+  hash_label at 0.00910638995383 : 1000
   label : Number of Lines

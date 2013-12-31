@@ -21,10 +21,7 @@ structure JGraph :> JGRAPH = struct
       (* throw an error if the lo > hi *)
       val _ = if hi >= lo then hi - lo + 1 else raise General.Subscript
       (* prints a label for the left y-axis and a title *)
-      val footer = "yaxis label : Fraction of lines\ntitle : " ^
-                      (if logFlag then "Log Plot of " else "") ^
-                      "Fraction of " ^
-                      "Lines With Minimum Width (" ^ title ^ ")\n"
+      val footer = "yaxis label : Fraction of lines\ntitle : " ^ title ^ "\n"
       (* A sequence of values for the x-axis *)
       val seq = 
         let
@@ -86,27 +83,43 @@ structure JGraph :> JGRAPH = struct
       val rightLabels =
         let
           val prepender = 
-            if Real.fromInt absHeight < 0.67 * height then
+            (if Real.fromInt absHeight < 0.67 * height then
               "  hash_at " ^
               ((fractionToString o Real.fromInt) (absHeight + absHeight div 2))
               ^ "\n  hash_label at " ^
               ((fractionToString o Real.fromInt) (absHeight + absHeight div 2))
-              ^ " : " ^ (Int.toString (absHeight + absHeight div 2))
-            else ""
+              ^ " : " ^ (Int.toString (absHeight + absHeight div 2)) ^ "\n"
+            else "\n") ^
+            (if Real.fromInt absHeight < 0.83 * height then
+              "  hash_at " ^
+              ((fractionToString o Real.fromInt) (absHeight + absHeight div 4))
+              ^ "\n  hash_label at " ^
+              ((fractionToString o Real.fromInt) (absHeight + absHeight div 4))
+              ^ " : " ^ (Int.toString (absHeight + absHeight div 4)) ^ "\n"
+            else "\n")
           val hashSeq = if logFlag then
                           List.filter
                             (fn x => absHeight div x > Real.ceil minHeight)
                             [1,4,16,64,256]
-                        else [1,2]
+                        else [0,1,2,3]
+          val hashHeights =
+            if logFlag then
+              map (fn x => absHeight div x) hashSeq
+            else
+              let
+                val m = absHeight div 4
+              in
+                map (fn x => absHeight - x * m) hashSeq
+              end
           (* put a hash and label at the height divided by the argument *)
           fun makeHash x =
-            "hash_at " ^
-            ((fractionToString o Real.fromInt) (absHeight div x)) ^
-            "\nhash_label at " ^
-            ((fractionToString o Real.fromInt) (absHeight div x)) ^
-            " : " ^ (Int.toString (absHeight div x)) ^ "\n"
+            "  hash_at " ^
+            ((fractionToString o Real.fromInt) x) ^
+            "\n  hash_label at " ^
+            ((fractionToString o Real.fromInt) x) ^
+            " : " ^ (Int.toString x) ^ "\n"
         in
-          prepender ^ String.concat (map makeHash hashSeq)
+          prepender ^ String.concat (map makeHash hashHeights)
         end
       (* This prints right axis and inserts the labels from above *)
       val rightAxis = "newgraph\nxaxis\n" ^ "  min " ^

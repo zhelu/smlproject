@@ -79,6 +79,10 @@ signature MANYFILES = sig
 
   (* Given a list of files, get a count of all line widths *)
   val getLineWidthCounts : string list -> int Counter.counter
+
+  (* Given a list of files and a tab size, return a pair indicating unused tab
+   * opportunities vs number of tabs *)
+  val getTabViolationsVsOpportunities : string list -> int -> int * int
 end
 
 structure ManyFiles :> MANYFILES = struct
@@ -298,4 +302,17 @@ structure ManyFiles :> MANYFILES = struct
          (case parseFile f of
             SOME _ => Counter.mergeInto (Violation.countLineWidth f, a)
           | NONE => a)) Counter.emptyCounter
+
+  (* see signature *)
+  fun getTabViolationsVsOpportunities fileList tabsize =
+    L.foldl
+      (fn (f, a as (opp, tab)) =>
+        (case parseFile f of
+           SOME _ =>
+             let
+               val (x, y) = Violation.tabViolationsVsOpportunities f tabsize
+             in
+               (opp + x, tab + y)
+             end
+         | NONE => a)) (0,0) fileList
 end

@@ -24,7 +24,7 @@
 \setlength{\evensidemargin}{0in}
 \setlength{\oddsidemargin}{0in}
 \setlength{\textheight}{9in}
-\setlength{\topmargin}{0in}
+\setlength{\topmargin}{-1in}
 %section start markers
 \newcommand{\lem}{\paragraph*{Lemma:}}
 \newcommand{\cor}{\paragraph*{Corollary:}}
@@ -64,7 +64,7 @@
 \renewcommand*{\thefootnote}{\arabic{footnote}}
 
 \title{Code Like a Pro:\\Observations on Expert ML Code}
-\subtitle{Comp150FP Final Project\footnote{This project, advised by Prof. Norman Ramsey, is also submitted in partial fulfillment of the requirements for the M.S. degree in computer science at Tufts University.}}
+\subtitle{Master's Project\footnote{This project, advised by Prof. Norman Ramsey, is also submitted as a final project for COMP150FP.}}
 \author{Zhe Lu}
 \date{10 December 2013}
 
@@ -82,8 +82,7 @@ The aim of this paper is two-fold: (1)~identify features common to code written 
 There are many ways to define what an expert is.
 For example, an often cited rule is that one requires 10000 hours of deliberate practice
 in a particular field to become an expert \cite{Gla08}. But if we want to provide novice programmers
-with specifics during these 10000 hours to aid deliberate practice \cite{Eri93}, what should we tell them? One challenge is that experts themselves
-do not necessarily know what features identify them as experts and what features are unique to them as individuals.
+with specifics during these 10000 hours to aid deliberate practice \cite{Eri93}, what should we tell them?
 
 We attempt to shed light onto this problem by employing software metrics,
 by trying to find measurable quantities
@@ -93,31 +92,33 @@ Specifically, we will examine source code written by experts.
 
 For samples of expert code, we turned to prominent projects where the source code is readily available:
 \begin{enumerate}
-\item The Standard ML of New Jersey compiler (SML/NJ), whose parser was used extensively for code analysis in this project (299 parseable files, 81102 lines of code)\footnote{\url{http://smlnj.cs.uchicago.edu/dist/working/110.76/compiler.tgz}}
-\item The MLKit compiler for SML (1319 parseable files, totalling 306154 lines of code)\footnote{\url{http://www.itu.dk/research/mlkit/dist/mlkit-4.3.0-src.tgz}}
-\item FoxNet, an implementation of the standard TCP/IP networking protocol stack in SML (72 parseable files, 8199 lines of code)\footnote{\url{ftp://ftp.cs.cmu.edu/project/fox/snapshot/foxnet.tar.gz}}
-\item Til, a type-directed compiler for ML (460 parseable files, totalling 109813 lines of code)\footnote{\url{http://www.cs.cornell.edu/Info/People/jgm/til.tar.Z}}
-\item MLton, an open-source, whole-program, optimizing SML compiler (424 parseable files, 58226 lines of code)\footnote{\url{http://sourceforge.net/projects/mlton/files/mlton/20130715/mlton-20130715.src.tgz/download}}
+\item The Standard ML of New Jersey compiler (SML/NJ), whose parser was used extensively for code analysis in this project (299 parseable files, 81,102 lines of code)\footnote{\url{http://smlnj.cs.uchicago.edu/dist/working/110.76/compiler.tgz}}
+\item The MLKit compiler for SML (1,319 parseable files, totalling 306,154 lines of code)\footnote{\url{http://www.itu.dk/research/mlkit/dist/mlkit-4.3.0-src.tgz}}
+\item FoxNet, an implementation of the standard TCP/IP networking protocol stack in SML (72 parseable files, 8,199 lines of code)\footnote{\url{ftp://ftp.cs.cmu.edu/project/fox/snapshot/foxnet.tar.gz}}
+\item Til, a type-directed compiler for ML (460 parseable files, totalling 109,813 lines of code)\footnote{\url{http://www.cs.cornell.edu/Info/People/jgm/til.tar.Z}}
+\item MLton, an open-source, whole-program, optimizing SML compiler (424 parseable files, 58,226 lines of code)\footnote{\url{http://sourceforge.net/projects/mlton/files/mlton/20130715/mlton-20130715.src.tgz/download}}
 \end{enumerate}
 
 We ran into a few challenges and complications when analyzing the code.
 In order to focus on real code, we've chosen to ignore source files that are associated
 with testing, regression, or microbenchmarks. On inspection, these files contain much more imperative
 code and do not make the same use of the module system than core files of each project.
-In addition to this issue, due to the presence of the \texttt{open} declaration and
-heavy use of the compilation manager in each project, we had trouble parsing for
-infix expressions. Therefore, we performed our analysis on measurable features
-of the pre-infix parse tree obtained from the SML/NJ ``Visible Compiler.''
 
-The layout of this paper is as follow.
-Section~\ref{sec:metric} provides a brief background
-concerning software metrics and source code analysis.
-We look at how well expert code conforms to readily available
-style guides in section~\ref{sec:style}.
-Section~\ref{sec:syntax} discusses an analysis
-of the distribution of syntactic forms. In section~\ref{sec:rec}, we'll try
-to categorize our recommendations.
-Finally, we conclude and reflect in section~\ref{sec:future}.
+In addition to this issue, we had trouble with infix expressions appearing in code.
+The ML parser works in two stages: the first treats all function applications
+as a list of terms and the second further parses these lists into individual
+curried function applications. The second step looks up each token to
+see if it is an infix operator and if so, to determine its
+operator precedence. However,
+the presence of \texttt{open} declarations and the
+heavy use of the compilation manager in each project
+make it quite difficult to ascertain either if an
+operator is infix or its operator precedence.
+Therefore, we performed our analysis on measurable features
+of the pre-infix parse tree obtained from the SML/NJ ``Visible Compiler.''
+The second parser is likely located inside the elaborator module
+of the compiler, and future work might attempt to
+correctly parse all infix operators.
 \section{SOFTWARE METRICS AND SOURCE CODE ANALYSIS}\label{sec:metric}
 \subsection{SOFTWARE METRICS}
 One way to tackle the challenges and complexities of software development is to employ
@@ -162,6 +163,20 @@ abstract syntax tree that it produces. Our analysis
 consists of static analyses -- that is, ignoring program input -- of the abstract syntax tree, looking for
 syntactic constructs and patterns in usage.
 \section{STYLE}\label{sec:style}
+\subsection{Motivation}\label{subsec:style}
+Good style is key to good writing -- consider the impact
+of Strunk and White's \emph{The Elements of Style}.
+We therefore consider the parallel to programming, that
+good style leads to better code. Since experts must by
+definition write better code, we conjecture that they
+must have good style. 
+As \cite{Ker78} state, ``clean code is easier to maintain.''
+Therefore, as groups of experts work on a large project over
+a long period of time, they likely adopt standards that
+make their collaboration easier.
+The challenge will be to 
+make some sense of what ``good style'' actually is
+and then see if experts conform to these guidelines.
 \subsection{Style Guides}\label{subsec:guide}
 If we wish to examine how well expert code conforms to style, we need some starting point for
 what good style is. A quick search of the web yielded three style guides, from which
@@ -176,25 +191,50 @@ Again, we cannot take these style guides at face value; rather, we use
 the style guides as starting points, whose suggestions are potential
 features of analysis.
 \subsection{Tabs vs. Spaces}\label{subsec:tab}
-Few debates are as heated as the one over whether to use spaces or tabs. The three style guides, nevertheless, are
+The three style guides we selected are
 united on the view that tabs are taboo in ML code. To paraphrase the CMU
 style guide, white space should emphasize the structure of the code \cite{Cmu12}.
 Tabs, which are potentially rendered differently for
 different users, cannot be used to consistently provide the desired indentation.
 For some users, this ability to customize the size of tabs is an asset not
-a drawback. These two view points generally underlie all ``debates'' concerning spaces versus tabs.
+a drawback.
 
-We can see from Table~\ref{table:whitespace} that most expert code definitely does
-not conform to the tab/spaces rule -- we see a tab character approximately once every third line.
-It seems that the coders made a decision to use tabs and stuck to the decision fairly well.
-The notable exception is complete lack of tabs in MLton, whose style guide we are using as an example.
-It's good to see that the principled experts at MLton stick to their own guidelines.
-But based on the fiery nature of the debate over the proper character
-for indenting, perhaps it is not surprising that the tab/spaces
-rule from style guides is adopted by only a select group of coders.
-While we can't say that the experts choose one style over the other in accordance with
-any style guide, we can say that the experts are at least consistent, which is
-a potentially helpful observation we can pass on to novice coders.
+Let us now define what we mean by an opportunity to use a tab character.
+First, we need to assume some tab size $n$ (for our purposes we picked $n=8$).
+We now stipulate that an opportunity to use a tab can only
+occur in leading spaces on a line of text. We now state the rule for replacement:
+a group of contiguous spaces (more than 1) such that the last space lands
+on a column divisible by $n$ can be all replaced with a tab character.
+For two groups that both satisfy the rule, the one that occurs first takes precedence.
+Notice that using $n = 8$ in our analysis produces the fewest number of
+opportunities for tabs. Therefore, it is possible we may undercount the opportunities
+relative to the number of tabs used.
+With these definitions and conventions in hand,
+we can now examine the expert code.
+
+\begin{table}[h!]
+\centering
+\begin{tabular}{|l||c|c||c|}
+\hline
+Project & Opportunities & Tab characters & Ratio of opportunities to tab characters \\ \hline\hline
+SML/NJ & 28,087 & 43,362 & 0.648 \\
+MLKit & 89,736 & 178,144 & 0.504 \\
+FoxNet & 3,669 & 5,304 & 0.692 \\
+Til & 7,689 & 98,183 & 0.0783 \\
+MLton & 56,189 & 0 & $\infty$ \\ \hline
+\end{tabular}
+\caption{Opportunities to use a tab versus number of tabs based on a tab size of 8.}
+\label{table:tabs}
+\end{table}
+
+We can see from Table~\ref{table:tabs} that
+in the SML/NJ, MLKit, and FoxNet projects,
+tabs are not used with much consistency. 
+Til strongly favors tabs since we find very few opportunities to make a tab replacement.
+MLton, on the other hand, as its style guide recommends, exclusively
+uses spaces instead of tabs. The reason for inconsistency in the first three projects
+may be due to differing preferences of its contributors, but we must postpone
+any concrete conclusions until we have collected more data.
 \subsection{The 80-Column Rule}\label{subsec:80}
 All three style guides recommend a line of code should not exceed 80 columns.
 The 80-column rule is a UNIX convention and many text editors automatically
@@ -202,21 +242,21 @@ wrap at 80 columns \cite{Cmu12}.
 
 \begin{table}[t!]
 \centering
-\begin{tabular}{|l||c|c||c|c|}
+\begin{tabular}{|l||c|c|}
 \hline
-Project & Tab violations & Lines per instance & Column violations & Lines per instance \\ \hline\hline
-SML/NJ & 23115 & 3.5086 & 350 & 231.72 \\
-MLKit & 100827 & 3.0364 & 13857 & 22.094 \\
-FoxNet & 2708 & 3.0277 & 31 & 264.48 \\
-Til & 52522 & 2.0908 & 782 & 140.43 \\
-MLton & 0 & -- & 713 & 81.663 \\ \hline
+Project & Column violations & Lines per instance \\ \hline\hline
+SML/NJ & 350 & 231.72 \\
+MLKit & 13,857 & 22.094 \\
+FoxNet & 31 & 264.48 \\
+Til & 782 & 140.43 \\
+MLton & 713 & 81.663 \\ \hline
 \end{tabular}
-\caption{Style violations involving whitespace}
-\label{table:whitespace}
+\caption{Violations of the 80-character width limit.}
+\label{table:width}
 \end{table}
 
 The example code from the expert ML users we looked at clearly cannot
-resist violating the 80-column rule (Table~\ref{table:whitespace}), with
+resist violating the 80-column rule (Table~\ref{table:width}), with
 those for MLKit being particularly egregious. While most editors can be configured to insert
 spaces in place of tabs, there is no active check on enforcing the 80-column
 rule while coders are working.
@@ -227,7 +267,9 @@ emphasis was placed on eliminating tabs than on observing the 80-column rule.
 
 Another possible explanation is that not all projects enforce the same width limit.
 We plotted the fraction of lines at least as wide as a given cutoff for each project,
-and we examined limits from 70 columns to 100 columns, inclusive.
+and we examined limits from 70 columns to 100 columns, inclusive, in order to
+examine the possibility that some projects might use a larger column width limit,
+which we could be unable to detect with our simplistic analysis above.
 
 \begin{figure}[h!]
 \centering
@@ -236,18 +278,19 @@ and we examined limits from 70 columns to 100 columns, inclusive.
 \includegraphics[scale=0.68]{foxnet.eps} & \includegraphics[scale=0.68]{til.eps} \\
 \includegraphics[scale=0.68]{mlton.eps} &
 \end{tabular}
-\caption{Fraction of lines at least as wide as a given limit}
+\caption{Fraction of lines and number of lines at least as wide as a given column limit}
 \label{fig:width}
 \end{figure}
 
-Figure~\ref{fig:width} shows the results of our analysis. In the SML/NJ project,
+Figure~\ref{fig:width} shows the results of our analysis
+as an inverse cumulative histogram and an inverse cumulative density. In the SML/NJ project,
 we notice an ``elbow'' in the plot around 80 columns. This inflection represents
 an effort to limit the maximum width of lines. The tail of the inverse cumulative
 histogram represents the failure to stay within the intended limit. We notice
 also such as ``elbow'' in the MLton project, which we hypothesize
 to mean that it also conforms generally to an 80-column limit.
 
-FoxNet a more interesting profile in its inverse cumulative histogram. We see
+FoxNet presents a more interesting profile in its inverse cumulative histogram. We see
 two discontinuities: one at 80 columns and another at 88 columns, another popular width limit.
 However, since there are so few lines in the FoxNet project, the data produced are
 not as smooth as in other projects. We must therefore be careful not to attribute
@@ -256,11 +299,23 @@ investigation on this required.
 
 Finally, the MLKit project and Til project show no inflection in the
 inverse cumulative histogram at all. This implies that the implementers of MLKit
-and Til made little effort to limit line width at all! Indeed, when we
-look at the same plots on a log scale, we see a very linear plot,
-whereas the other plots are decidedly less linear (more sigmoid for SML/NJ and MLton).
-Figure~\ref{fig:log-width} shows the same data plotted on a logarithmic scale.
+and Til made little effort to limit line width at all!
 
+Figure~\ref{fig:log-width} shows the same data plotted on a logarithmic scale.
+We notice that the plots are quite linear ($R^{2} > 0.99$) for MLKit and Til.
+This suggests an exponential decay in the number of violations as we increase the
+threshold for violations. It certainly seems plausible that \emph{without} a
+specified column limit, each increment in width limit results in a constant
+fraction reduction in the number of violating lines.
+Again, we have evidence that MLKit and Til do not employ column limits.
+On the other hand, SML/NJ
+and MLton exhibit a sigmoid when we look at their inverse cumulative histograms
+on a logarithmic scale. The inflection at the center of the sigmoid corresponds to
+the ``elbow'' mentioned before. We interpret this to mean that the coders are trying
+to conform to some column limit since the fraction of lines falls more quickly near
+the threshold than at smaller or larger limits. As before, it is difficult to
+draw convincing conclusions from the FoxNet data because we are unsure
+whether the features are real or simply an artifact of data discreteness.
 \begin{figure}[h!]
 \centering
 \begin{tabular}{cc}
@@ -268,14 +323,12 @@ Figure~\ref{fig:log-width} shows the same data plotted on a logarithmic scale.
 \includegraphics[scale=0.68]{log-foxnet.eps} & \includegraphics[scale=0.68]{log-til.eps} \\
 \includegraphics[scale=0.68]{log-mlton.eps} &
 \end{tabular}
-\caption{Log plot of fraction of lines at least as wide as a given limit. $R^{2}$ value shown for a least-squares linear fit of the logarithm.}
+\caption{Log plot of fraction of lines and number of lines at least as wide as a given column limit. $R^{2}$ value shown for a least-squares linear fit of the logarithm.}
 \label{fig:log-width}
 \end{figure}
 
 Clearly, not all experts conform to the 80-column rule.
-In addition, even those we appear to have an 80-column rule ignore it approximately 1\% of the time.
-Nevertheless, experts in most projects do seem to be trying to conform to some limit around 80 columns.
-We therefore recommend to beginners also to try to stay within a column limit.
+Even those who appear to have an 80-column rule ignore it approximately 1\% of the time.
 \subsection{Verbosity in \texttt{if} Expressions}
 A convention cited in the Cornell style guide is that we should use \texttt{if}
 expressions wisely. There are two specific uses of \texttt{if} that we
@@ -599,10 +652,10 @@ We therefore recommend that beginners avoid using \texttt{while} loops completel
 \begin{tabular}{|l||c|c|}
 \hline
 Project & Instances of expression lists & Lines per instance \\ \hline\hline
-SML/NJ & 1970 & 41.17 \\
-MLKit & 3869 & 79.13 \\
+SML/NJ & 1,970 & 41.17 \\
+MLKit & 3,869 & 79.13 \\
 FoxNet & 68 & 120.6 \\
-Til & 1928 & 59.96 \\
+Til & 1,928 & 59.96 \\
 MLton & 641 & 90.84 \\ \hline
 \end{tabular}
 \caption{Occurrences of expressions lists}
@@ -674,7 +727,7 @@ in the \texttt{List} structure from the standard basis.
 \begin{tabular}{|p{1in}||>{\centering\arraybackslash}p{0.62in}|>{\centering\arraybackslash\hspace{0pt}}p{0.9in}|>{\centering\arraybackslash\hspace{0pt}}p{0.6in}|>{\centering\arraybackslash\hspace{0pt}}p{0.5in}|>{\centering\arraybackslash\hspace{0pt}}p{0.6in}|}
 \hline
 Function & SML/NJ & MLKit & FoxNet & Til & MLton \\ \hline\hline
-\texttt{::} & 882 & 6350 & 97 & 801 & 372 \\
+\texttt{::} & 882 & 6,350 & 97 & 801 & 372 \\
 \texttt{@} & \textbf{205} & \textbf{602} & \textbf{18} & \textbf{248} & \textbf{69} \\
 \texttt{all} & 13 & 76 & 0 & 53 & 35 \\
 \texttt{app} & \textbf{331} & \textbf{728} & 3 & \textbf{340} & \textbf{45} \\
@@ -687,7 +740,7 @@ folds\hspace{2in}(\texttt{foldl},\texttt{foldr}) & \textbf{237} (89,\textbf{148}
 \texttt{hd} & 42 & 44 & 0 & 133 & 16 \\
 \texttt{last} & 8 & 78 & 0 & 2 & 22 \\
 \texttt{length} & \textbf{163} & 578 & 3 & 119 & \textbf{87} \\
-\texttt{map} & \textbf{701} & \textbf{1724} & \textbf{60} & \textbf{1029} & \textbf{108} \\
+\texttt{map} & \textbf{701} & \textbf{1,724} & \textbf{60} & \textbf{1,029} & \textbf{108} \\
 \texttt{mapPartial} & 7 & 26 & 0 & 0 & 3 \\
 \texttt{nth} & 5 & 4 & 0 & 6 & 8 \\
 \texttt{null} & 8 & 50 & 0 & 1  & 20 \\
@@ -697,7 +750,7 @@ folds\hspace{2in}(\texttt{foldl},\texttt{foldr}) & \textbf{237} (89,\textbf{148}
 \texttt{tabulate} & 1 & 18 & 0 & 0  & 13 \\
 \texttt{take} & 6 & 10 & 0 & 10 & 1 \\
 \texttt{tl} & 54 & 114 & 0 & \textbf{171} & 26 \\\hline\hline
-Total & 2904 & 12220 & 212 & 3349 & 1058 \\
+Total & 2,904 & 12,220 & 212 & 3,349 & 1,058 \\
 Lines per call & 27.928 & 25.054 & 38.674 & 32.790 & 55.034 \\\hline
 \end{tabular}
 \caption{Calls to functions from the \texttt{List} structure (\texttt{concat} omitted). Bolded entries each account for more than 5\% of the total number of occurrences in a project.}
@@ -758,7 +811,7 @@ abstraction and modularity by using structures, signatures, and functors.
 \hline
 Project & Files with module declarations & Fraction & Files with only module declarations & Fraction \\ \hline\hline
 SML/NJ & 297 & 0.99 & 297 & 0.99 \\
-MLKit & 1308 & 0.99 & 1270 & 0.96 \\
+MLKit & 1,308 & 0.99 & 1,270 & 0.96 \\
 FoxNet & 30 & 0.42 & 29 & 0.40 \\
 Til & 445 & 0.97 & 443 & 0.96 \\
 MLton & 397 & 0.94 & 386 & 0.91 \\ \hline
@@ -796,11 +849,11 @@ or \texttt{local} construction.
 \begin{tabular}{|l||>{\centering\arraybackslash}p{1.2in}|>{\centering\arraybackslash}p{1.2in}|c||>{\centering\arraybackslash}p{1.2in}|c|}
 \hline
 Project & Function declarations in \texttt{let} & Function declarations in \texttt{local} & Sum & Total Function Declarations & Fraction \\ \hline\hline
-SML/NJ & 2652 & 192 & 2844 & 4866 & 0.58 \\
-MLKit & 6130 & 2682 & 8812 & 24841 & 0.35 \\
+SML/NJ & 2,652 & 192 & 2,844 & 4,866 & 0.58 \\
+MLKit & 6,130 & 2,682 & 8,812 & 24,841 & 0.35 \\
 FoxNet & 103 & 19 & 122 & 530 & 0.23 \\
-Til & 1856 & 500 & 2356 & 5627 & 0.42 \\
-MLton & 1004 & 252 & 1256 & 3533 & 0.36 \\\hline
+Til & 1,856 & 500 & 2,356 & 5,627 & 0.42 \\
+MLton & 1,004 & 252 & 1,256 & 3,533 & 0.36 \\\hline
 \end{tabular}
 \caption{Functions declared inside of \texttt{let} expressions}
 \label{table:funlet}
@@ -881,8 +934,9 @@ The source code is available on GitHub via \url{http://www.github.com/zhelu/smlp
 \bibitem[Ericsson et al. 1993]{Eri93} Ericsson, K.\,A., Krampe, R.\,T., Tesch-R\"{o}mer, C. (1993) The Role of Deliberate Practice in the Acquisition of Expert Performance. \emph{Psychological Rev.} \textbf{100}, 363--406.
 \bibitem[Gladwell 2008]{Gla08} Gladwell, M. (2008) \emph{Outliers}. Little, Brown and Co., New York, NY.
 \bibitem[Gobet et al. 2001]{Gob01} Gobet, F., Lane, P.\,C.\,R., Croker, S., Cheng, P.\,C-H., Jones, G., Oliver, I., Pine, J.\,M. (2001) Chunking mechanism in human learning. \emph{Trends in Cognitive Sci.} \textbf{5}, 236--243.
-\bibitem[Hughes 1990]{Hug90} Hughes, J. (1990) Why Functional Programming Matters. In D.\,A.\,Turner, ed, \emph{Research Topics in Functional Programming}. Boston, MA: Addison Wesley.
+\bibitem[Hughes 1990]{Hug90} Hughes, J. (1990) Why Functional Programming Matters. In D.\,A.\,Turner, ed, \emph{Research Topics in Functional Programming}. Boston, MA: Addison-Wesley.
 \bibitem[Jones 1994]{Jon94} Jones, C. (1994) Software metrics: good, bad and missing. \emph{Computers}, \textbf{27}, 98--100.
+\bibitem[Kernighan and Plauger]{Ker78} Kernighan, B.\,W., Plauger, P.\,J. (1978) \emph{The Elements of Programming Style}. New York, NY: Yourdon.
 \bibitem[Ordonez and Hadda 2008]{Ord08} Ordonez, M.\,J. Hadda, H.\,M. (2008) The State of Metrics in Software Industry. In \emph{5th International Conference Information Technology: New Generations (ITNG'08)} Las Vegas, NV. 453--458. Washington, D.C.: IEEE Computer Society.
 \bibitem[Peyton Jones, Wadler 1993]{Jon93} Peyton Jones, S.\,L., Wadler, P. (1993) Imperative Functional Programming. In \emph{ACM Symposium on Principles of Programming Languages (POPL'93)}. Charleston, SC. 71--84. New York, NY: ACM.
 \bibitem[Takai et al. 2011]{Tak11} Takai, Y., Kobayashi, T., Agusa, K. (2011) Software Metrics Based on Coding Standards Violations. In \emph{2011 Joint Conference of the 21st Int'l Workshop on Software Measurement and 6th Int'l Conference on Software Process and Product Measurement (IWSM-MENSURA)} Nara, Japan. 273--278. Washington, D.C.: IEEE Computer Society.

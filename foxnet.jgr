@@ -60,7 +60,7 @@ xaxis
   hash_label at 100 : 100
   hash_labels hjl vjc font Helvetica rotate -90
 yaxis label : Fraction of lines
-title : Fraction of Lines With Minimum Width (FoxNet)
+title : FoxNet
 newgraph
 xaxis
   min 69.1 max 100.9 nodraw
@@ -73,8 +73,14 @@ yaxis
   draw_at 100.9 hash_scale +1.0
   no_auto_hash_labels
   no_auto_hash_marks
-hash_at 0.0365898280278
-hash_label at 0.0365898280278 : 300
-hash_at 0.0182949140139
-hash_label at 0.0182949140139 : 150
+
+
+  hash_at 0.0365898280278
+  hash_label at 0.0365898280278 : 300
+  hash_at 0.0274423710209
+  hash_label at 0.0274423710209 : 225
+  hash_at 0.0182949140139
+  hash_label at 0.0182949140139 : 150
+  hash_at 0.00914745700695
+  hash_label at 0.00914745700695 : 75
   label : Number of Lines

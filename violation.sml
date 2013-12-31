@@ -24,6 +24,9 @@ signature VIOLATION = sig
   (* get a list of tab violations from the input source file *)
   val getTabViolations : string -> violation list
 
+  (* Given a source file and a tab size, evaluates to a pair with the number of
+   * remaining tab opportunities and the number of tabs *)
+  val tabViolationsVsOpportunities : string -> int -> int * int
 
   (* get a list of if violations from the input source file *)
   val getIfViolations : string -> violation list
@@ -120,6 +123,34 @@ structure Violation :> VIOLATION = struct
         (fn (a, acc) => case List.find (fn x => x = a) acc of
                           SOME _ => acc
                         | NONE => a :: acc) [] (loop 1) before TextIO.closeIn instrm
+    end
+
+  (* see signature *)
+  fun tabViolationsVsOpportunities filename tabsize =
+    let
+      val instrm = TextIO.openIn filename
+      (* loop through text.
+       * After we encounter a char that is not a tab or a space, set the flag to
+       * true. col and spaces are the current column and the number of spaces
+       * seen, respectively. *)
+      fun loop (col, spaces, flag) (opp, t) =
+        (case TextIO.input1 instrm of
+           NONE => (opp, t)
+         | SOME e =>
+             (case e of
+                #"\n" => loop (1, 0, false) (opp, t)
+              | #"\t" =>
+                  loop (((col div tabsize) + 1) * tabsize, 0, flag)
+                    (opp, t + (if flag then 0 else 1))
+              | #" " =>
+                  if not flag
+                     andalso (spaces + 1) mod tabsize = 0
+                     andalso spaces > 0 then
+                    loop (col + 1, 0, flag) (opp + 1, t)
+                  else loop (col + 1, spaces + 1, flag) (opp, t)
+              | _ => loop (col + 1, 0, true) (opp, t)))
+    in
+      loop (1, 0, false) (0, 0) before TextIO.closeIn instrm
     end
 
   (* traverseDecs takes a fileloc parameter, a
