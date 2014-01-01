@@ -347,12 +347,12 @@ a few are made up of complicated \texttt{if} expressions where rewriting may not
 The first example below shows a \texttt{if} expression that could be rewritten as \texttt{e = t orelse f r}.
 In the second case, the use of \texttt{orelse} does not significantly improve the readability or conciseness
 of the expression. The problem is that the \texttt{if} expression has the same value as the test expression,
-but if it evaluates to \texttt{false}, we also wish to evaluate some code for side-effects.
+but if it evaluates to \texttt{false}, we also wish to evaluate some code for side effects.
 
 \begin{figure}[h!]
 \begin{enumerate}
 \item \texttt{if e = t then true else f r}
-\item \texttt{if ar1 = ar2 then true else (}$\langle$\emph{code with side-effects}$\rangle$\texttt{; false)}
+\item \texttt{if ar1 = ar2 then true else (}$\langle$\emph{code with side effects}$\rangle$\texttt{; false)}
 \end{enumerate}
 \caption{Two \texttt{if} expressions from expert code where the \texttt{then} branch is the value \texttt{true}. In example 1, we could
 rewrite in a more concise way by using \texttt{orelse}. In example 2, the use of \texttt{orelse} does not help much.}
@@ -361,89 +361,109 @@ rewrite in a more concise way by using \texttt{orelse}. In example 2, the use of
 
 The expert code contains many uses of \texttt{orelse} and \texttt{andalso}, so we are forced to
 conclude that the coders either missed an opportunity to use those syntactic constructs or chose
-not to do so. But when we see in SML/NJ, MLKit, and Til an expression of the form:
+not to do so. Interestingly though, we do see \texttt{if} expressions of the following form:
 \[\texttt{if }\langle expression\rangle\texttt{ then true else false}\]
-we cannot help but wonder if it not just the former scenario. Despite the existence of
-our selected \texttt{if} violations in expert code, we
-recommend that beginners avoid verbosity in their \texttt{if} expressions by writing them
-in more concise forms.
+There is one such example in the Til project, eight such examples in MLKit, and three instances
+in SML/NJ. On inspection, there is no reason why each of these expressions could not be
+rewritten by replacing the entire \texttt{if} expression with the test clause.
+The test expressions are simple enough that it is unlikely that the authors
+chose to use the \texttt{if} expression for reasons of increased legibility.
+Instead, we suggest that the evidence points to omissions of carelessness.
 
 \begin{table}[h!]
 \centering
-\begin{tabular}{|l||c|c||>{\centering\arraybackslash\hspace{0pt}}p{1in}|c|}\hline
-Project & \texttt{if} violations & Lines per instance & Missed fold opportunities & Lines per instance \\ \hline\hline
-SML/NJ & 25 & 3244.1 & 75 & 1081.4 \\
-MLKit & 70 & 4373.6 & 624 & 490.63 \\
-FoxNet & 0 & -- & 9 & 911.00 \\
-Til & 23 & 4774.5 & 181 & 140.43 \\
-MLton & 30 & 1940.9 & 22 & 2646.6 \\ \hline
+\begin{tabular}{|l||c|c|}\hline
+Project & \texttt{if} violations & Lines per instance \\ \hline\hline
+SML/NJ & 25 & 3244.1 \\
+MLKit & 70 & 4373.6 \\
+FoxNet & 0 & -- \\
+Til & 23 & 4774.5 \\
+MLton & 30 & 1940.9 \\ \hline
 \end{tabular}
-\caption{Selected usage style violations (see text)}
+\caption{Instances of verbosity in \texttt{if} expressions (see text)}
 \label{table:style}
 \end{table}
 
 \subsection{Fold}\label{subsec:fold}
 The Cornell and CMU style guides both suggest making heaving use of library functions.
 The author has noted, in discussions with the course staff for a programming languages course,
-that beginners frequently overlook opportunities to use library functions for lists. Since many of the basis functions
+that beginners frequently overlook opportunities to
+use library functions for lists. Since many of the basis functions
 for lists, for example, \texttt{map}, \texttt{exists}, \texttt{all}, \texttt{filter},
 and \texttt{rev}, can be written in terms of a fold over a list, we decided to look
-for missed opportunities to apply a fold. \cite{Jeu13}
+for missed opportunities to apply a fold \cite{Jeu13}.
 states that using higher order recursion schemes like a fold can allow a program
 to benefit from shortcut fusion, and they
 describe an algorithm for turning
-explicitly recursive functions into folds. We chose not to tackle the more challenging
+explicitly recursive functions into folds.
+We chose not to tackle the more challenging
 problem of finding all fold opportunities or transforming them,
-but instead chose to look for a specific subset where folds might be applied.
+but instead chose to look for a specific
+subset where folds might be applied.
 
 Like \cite{Jeu13}, we are looking for cases of explicit recursion. Specifically, we try find
 find instances of the following form:
+
+\begin{figure}[!h]
 \begin{center}
-\texttt{fun f }\(e_{1}\ldots e_{i-1}\)\texttt{ (x::xs) }\(e_{i+1}\ldots e_{n}\) \(= e\)
+\texttt{fun f }\(e_{1}\ldots e_{i-1}\)\texttt{ (x::xs) }\(e_{i+1}\ldots e_{n}\)\texttt{=}\(e\)
 
 where $e$ has the subexpression \texttt{f }\(v_{1}\ldots v_{i-1}\)\texttt{ xs }\(v_{i+1}\ldots v_{n}\)
+
+And, either:
+
+\texttt{fun f }\(e_{1}\ldots e_{i-1}\)\texttt{ [] }\(e_{i+1}\ldots e_{n}\) \texttt{= ...}
+
+or
+
+\texttt{fun f }\(e_{1}\ldots e_{i-1}\)\texttt{ \_ }\(e_{i+1}\ldots e_{n}\) \texttt{= ...}
+
 \end{center}
+\caption{A simplistic pattern for identifying explicit recursion that can be replaced with a fold}
+\label{fig:folddef}
+\end{figure}
+
 That is, we're explicitly calling a recursive function on the tail of a input list.
 The only other restriction is that the only list literal we allow in the same position
 a declared pattern is the empty list literal (\texttt{[]}). This prevents idiosyncratic
 behavior from being introduced into an otherwise sound definition by structural induction.
 We won't concern ourselves with the order of the pattern match because either the patterns
 are mutually exclusive (e.g., \texttt{[]} or a cons cell) or there is a redundant match
-and the compiler will throw an error. We, however, cannot claim to be able to identify all
+and the compiler will throw an error.
+The motivation behind our definition is that a fold over a list in essence
+a function that consumes a list. Explicit recursion defining this consumer must
+consume a smaller list on each call, hence the requirement with a cons cell and a
+call to the recursive function on the tail. In addition, we want our recursion to terminate
+correctly, hence, the additional requirement that the function define a case that handles
+the null list.
+We, however, cannot claim to be able to identify all
 fold opportunities correctly because of our inability to correctly parse infix expressions.
-Indeed, as we will see later, some of the explicit recursions identified as missed
-opportunities are not opportunities to use fold at all!
 
-We see from Table~\ref{table:style} that missed opportunities for fold occur more often
-than opportunities to rewrite \texttt{if} expressions. Perhaps this is
-because \texttt{if} statements are relatively easy to reason about, but
-rewriting a function as a fold over a list can be much more challenging.
-And when a fold is not obvious, the programmer is surely tempted to just
-get the job done with a recursive function definition.
-
-We looked at some random
-samples of these violations. Three are shown in Figure~\ref{fig:fold}.
+After performing an initial analysis, we looked at some
+random samples of the violations we found.
+Three are shown in Figure~\ref{fig:fold}.
 A good number of these fold opportunities cannot actually
 be written as fold because on encountering the null list, an error or
 some other imperative code is executed. Example 1 falls under this category:
 we see that the imperative function \texttt{bug} is executed
 on a null list and potentially even as we are traversing the list.
-That this example was found is more a comment on the imcompleteness
-of our search.
+Such a behavior cannot be captured by a fold because the value of a
+fold on the null list defines the default accumulator and none
+can be defined here.
+That this example was found tells us that our search algorithm is unsound.
 
-In example 2, we cannot easily use a fold because there is look ahead
-in the code. The forced use of fold will likely result in a complicated
-accumulator which ultimately makes the code more complicated not less so.
+In example 2, we cannot use a fold because 
+there is a recursive call on \texttt{xr'} instead of \texttt{xr},
+which in essence, skips an element in the list traversal.
+Fold, on the other hand, examines every element in the list.
 
 Finally, in example 3, we see a example where we might consider
 using the \texttt{exists} library function from the \texttt{List}
 structure. While \texttt{exists} can be written as a fold,
 it is inefficient to use a fold on a long list because
-we can take advantage of the short-circuiting behavior
+we cannot take advantage of the short-circuiting behavior
 of the shown in this explicitly recursive function.
 
-Thus, there are clearly cases where we could use a fold,
-but it is not appropriate to do so.
 \begin{figure}
 \begin{enumerate}
 \item
@@ -490,22 +510,27 @@ fun find (h :: t) = if h=index_n2 then true else find t
 \end{enumerate}
 \caption{Examples of ``missed fold opportunities''. Example 1 cannot be written as a fold
 because there is not initial accumulator.
-Example 2 could possibly be written as a fold but would require a complicated accumulator. Example 3
+Example 2 can skip an element in the list
+and is thus not condusive to translation into a fold. Example 3
 can be written as a fold but would then not benefit from short-circuit testing.}
 \label{fig:fold}
 \end{figure}
-As we will see in Section~\ref{subsec:list}, folds occur quite often in
-expert code, more often than the missed opportunities we were able to find.
-That there are still a good number of unutilized fold opportunities
-suggests that they were overlooked by their authors,
-were left in place for a specific stylistic choice, or
-written in explicit recursive form for reasons of efficiency.
-Our random sample above suggests that explicit recursion
-is generally used for a reason.
 
+We are forced to conclude that our simple framework for finding folds
+is unfortunately unsound. The two primary reasons are that explicit recursion
+can encode imperative behavior and provide behavior other than a simple
+linear traversal of a list.
+The problem with our simplistic pattern in Figure~\ref{fig:folddef}
+is that we've failed capture the fact that a fold must have a well-defined
+default accumulator and that it examines every element in a list.
+So while it would be very helpful to identify places where we should
+use a fold instead of explicit recursion, our approach does
+not solve this problem.
+
+We hoped to salvage something useful from this failed attempt.
 Reviewers suggested that it is not always a good idea to transform
-explicit recursion into a fold, particularly if the accumulator becomes
-too complex. However, they suggested that \texttt{map} and \texttt{filter}, which are
+explicit recursion into a fold anyway, particularly if the accumulator becomes
+too complex, but, they suggested, \texttt{map} and \texttt{filter}, which are
 special cases of fold, are always preferable to explicit recursion.
 
 We propose to identify opportunities for map and filter
@@ -513,12 +538,16 @@ in a similar fashion to how we identified opportunities for fold.
 Here, in the recursive call, we look for the appearance of the cons operator (\texttt{::})
 immediately before the function name. In addition, we desire for the
 null list to appear as the right-hand side of one of the clauses.
-As before, we may not find all cases because of incorrect infix parsing.
+Our analysis still lacks soundness since we are looking for
+explicit recursion in the same manner. However, because we've stipulated
+that the null list should occur on the right-hand side, we eliminate
+the troublesome case where the starting value for the accumulator does not exist
+(see example 1 in Figure~\ref{fig:fold}).
 
 \begin{table}[h!]
 \centering
 \begin{tabular}{|l||c|c|}\hline
-Project & map/filter violations & Lines per instance \\ \hline\hline
+Project & \texttt{map}/\texttt{filter} violations & Lines per instance \\ \hline\hline
 SML/NJ & 2 & 40551.0 \\
 MLKit & 76 & 4028.34 \\
 FoxNet & 2 & 4099.50 \\
@@ -540,15 +569,13 @@ these missed opportunities are generally truly missed opportunities.
 Quite interestingly also, FoxNet seems to implement its own library
 of utility functions, and our analysis found two of their
 implementations of \texttt{filter} (\texttt{map} was not implemented).
-Thus, we suggest that our analysis is quite sound.
-
-Our advice to beginners to is apply fold where it is reasonably
-simple to do so, but always be on the lookout to use \texttt{map} or \texttt{filter}
-whenever possible.
+While we cannot argue that our analysis is sound, we suggest it might
+be a useful starting point for finding opportunities to apply
+\texttt{map} and \texttt{filter}.
 \subsection{Offside violations}\label{subsec:offside}
 The \emph{offside rule} states that if a declaration or expression (or any language construct)
 has to be split across multiple lines, later lines ought to be more indented relative to
-the first line.\footnote{See: \url{http://www.cs.tufts.edu/comp/105-2013s/details.html}}
+the first line \cite{Lan66}.
 The SML/NJ parser includes nodes with the name \texttt{MarkX} where \texttt{X} is
 one of the syntactic categories (e.g., \texttt{MarkDec} for declaration, \texttt{MarkExp} for expression,
 etc.). These are value constructors for the datatypes that represent the corresponding
@@ -562,8 +589,9 @@ We ran into two complications with the analysis. The first is that when we have 
 \texttt{SourceMap} treats the tab character has having a width of 1. Clearly,
 this is not what we want. However, this problem is easily remedied 
 by replacing tab characters with an equivalent number of spaces.
-We can try to replace the tab with 2, 4, or 8 spaces and examine how
-the offside rule is followed in each set of replacements.
+We can try to replace the tab with enough spaces such that
+the last space ends on a column that is a multiple of 2, 4, or 8 (corresponding to those tab sizes)
+and examine how the offside rule is followed in each set of replacements.
 
 The more serious, and yet unsolved, complication is that if the first line of a construct
 is indented, \texttt{SourceMap} returns the level of indentation
@@ -586,38 +614,30 @@ fun example x =
 \caption{Trouble detecting violations of the offside rule}
 \label{fig:offside}
 \end{figure}
-\subsection{Final thoughts on style}\label{subsec:stylethoughts}
-We conclude this section with a few thoughts on style.
-The takeaway for beginners from this section should not be
-that because we see style violations in expert code,
-style is not important. On the contrary, we believe that
-these errors reflect the challenges that even experts
-struggle with in the code, both in identifying places
-whether style violations occur and finding consensus on
-what good style is. It seems prudent to
-remember style's purpose of making code easier to read
-and maintain so the choice of style is perhaps not as important as consistently following
-a style that supports its purpose.
 \section{SYNTACTIC FORMS}\label{sec:syntax}
 \subsection{Imperative Features}\label{subsec:imper}
-In Standard ML, there are two main imperative constructs in terms of expressions:
+One of the paradigms in writing functional programs is to avoid side effects.
+Such a principled approach allows us to reason better about correctness and
+removes the constraints imposed by having a fixed order of execution \cite{Hug90}. Therefore,
+it behooves us to examine whether such imperative features are necessary or avoidable.
+
+Any expression in ML can have a side effect. 
+We are interested in expressions evaluated only for their side effects.
+In Standard ML, there are two main constructs in terms of expressions that fit this mold:
 (1)~the \texttt{while} expression and (2)~a list of expression separated by semicolons (similar to the \texttt{begin...end} syntax of Pascal) \cite{Ull98}.
 The former has the form
 \[\texttt{while <boolean-expression> do <expression>}\] and always returns a value of unit type.
-The return value indicates that the \texttt{while} expression's purpose is to produce the side-effects associated
+The return value indicates that the \texttt{while} expression's purpose is to produce the side effects associated
 with the expression in its body. The sequence of expressions evaluates only to the last in that sequence, indicating
-in a similar fashion, that all expressions in the list except for the last are evaluated for side-effects.
+in a similar fashion that all expressions in the list except for the last are evaluated only for side effects.
 
-In addition, one could use the \texttt{val} declaration to perform imperative actions.
-Generally, the results are assigned to unit or the wildcard pattern:
+In addition, we can use the \texttt{val} declaration to assign the result
+of an evaluation to unit or wildcard pattern. Again, the result of the evaluation
+cannot be used, so the evaluation is performed only for side effects.
 \begin{center}
 \texttt{val () = ...}\\
 \texttt{val \_ = ...}
 \end{center}
-Of course, one of the paradigms in writing functional programs is to avoid side-effects.
-Such a principled approach allows us to reason better about correctness and
-removes the constraints imposed by having a fixed order of execution \cite{Hug90}. Therefore,
-it behooves us to examine whether such imperative features are necessary or avoidable.
 \subsubsection{Expressions with \texttt{while}}
 \begin{table}[h!]
 \centering
@@ -633,8 +653,8 @@ MLton & 0 & --\\ \hline
 \caption{Occurrences of \texttt{while} expressions}
 \label{table:while}
 \end{table}
-As we can see from Table~\ref{table:while}, all projects except for Til
-contain no \texttt{while} loops at all.
+As we can see from Table~\ref{table:while}, only the Til
+project uses \texttt{while} loops.
 In the two instances found in the Til project, the body of the \texttt{while}
 loop includes modifying a mutable reference, which justifies the use of
 an imperative feature. Getting rid of the while loops requires a design of how the code works so
@@ -645,7 +665,6 @@ in expert projects.
 From the analysis, expert ML programmers seemed quite principled in avoiding imperative
 elements of ML. This is perhaps not surprising since they could have chosen
 to implement in any language but selected a functional language in the end.
-We therefore recommend that beginners avoid using \texttt{while} loops completely.
 \subsubsection{Expression Lists}
 \begin{table}[h!]
 \centering
@@ -668,7 +687,7 @@ of occurrences, normalized by the number of lines, appears to be in the SML/NJ
 compiler where we find an expression list on average once every with every
 40 or so lines of code.
 
-The expression lists are likely used for the side-effects of the non-terminal
+The expression lists are likely used for the side effects of the non-terminal
 expression in the list. Sadly, the expressions are quite complex and difficult
 to aggregate into meaningful groupings programmatically. Nevertheless,
 looking at the examples of expression lists in the expert code, we find that
@@ -684,7 +703,7 @@ the expression lists frequently occur in the following contexts:
 
 Haskell has the IO monad to allow users to perform I/O in a purely functional way \cite{Jon93}.
 Standard ML does not, so users are left to perform their
-I/O unsafely in imperative fashion.
+I/O in imperative fashion.
 
 Arrays and references are two examples that \cite{Ull98} cites as way to ``violate the functional,
 side-effect-free style,'' but also noting that ``there are situations where programs cannot
@@ -783,7 +802,7 @@ including \texttt{map} could be rewritten using a fold.
 Another function of note is \texttt{app}, which each accounts for more than 5\% of
 occurrences in four of five projects. The \texttt{app} is particularly interesting because it can be
 considered an imperative version of \texttt{map}, which we have observed is called quite often. We hypothesize
-that not only do expert programmers transform data in bulk as a list with \texttt{map}, the execute side-effects
+that not only do expert programmers transform data in bulk as a list with \texttt{map}, the execute side effects
 in bulk in a list with \texttt{app}.
 
 Finally, we point out that the Til project makes heavy use of the head (\texttt{hd}) and tail (\texttt{tl})
@@ -937,6 +956,7 @@ The source code is available on GitHub via \url{http://www.github.com/zhelu/smlp
 \bibitem[Hughes 1990]{Hug90} Hughes, J. (1990) Why Functional Programming Matters. In D.\,A.\,Turner, ed, \emph{Research Topics in Functional Programming}. Boston, MA: Addison-Wesley.
 \bibitem[Jones 1994]{Jon94} Jones, C. (1994) Software metrics: good, bad and missing. \emph{Computers}, \textbf{27}, 98--100.
 \bibitem[Kernighan and Plauger]{Ker78} Kernighan, B.\,W., Plauger, P.\,J. (1978) \emph{The Elements of Programming Style}. New York, NY: Yourdon.
+\bibitem[Landin 1966]{Lan66} Landin, P. (1966) The Next 700 Programming Languages. \emph{Comm. ACM}, \textbf{9}, 157--166.
 \bibitem[Ordonez and Hadda 2008]{Ord08} Ordonez, M.\,J. Hadda, H.\,M. (2008) The State of Metrics in Software Industry. In \emph{5th International Conference Information Technology: New Generations (ITNG'08)} Las Vegas, NV. 453--458. Washington, D.C.: IEEE Computer Society.
 \bibitem[Peyton Jones, Wadler 1993]{Jon93} Peyton Jones, S.\,L., Wadler, P. (1993) Imperative Functional Programming. In \emph{ACM Symposium on Principles of Programming Languages (POPL'93)}. Charleston, SC. 71--84. New York, NY: ACM.
 \bibitem[Takai et al. 2011]{Tak11} Takai, Y., Kobayashi, T., Agusa, K. (2011) Software Metrics Based on Coding Standards Violations. In \emph{2011 Joint Conference of the 21st Int'l Workshop on Software Measurement and 6th Int'l Conference on Software Process and Product Measurement (IWSM-MENSURA)} Nara, Japan. 273--278. Washington, D.C.: IEEE Computer Society.
