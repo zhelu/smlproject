@@ -73,22 +73,28 @@
 \input{epsf.sty}
 \maketitle
 \begin{abstract}
-Beginners can become experts through directed practice towards a goal. In an effort to
-help them direct their practice, we make observations about what good ML code looks like.
-The aim of this paper is two-fold: (1)~identify features common to code written in Standard ML by experts and
-(2)~provide suggestions to help novices model their code after expert code.
+Understanding expertise in ML programming can help beginners learn better and improve faster.
+We make measurements on expert projects in ML and infer
+a set of features common to expert code. These features cover
+style, syntax, and organization in ML programs.
 \end{abstract}
 \section{INTRODUCTION}
 There are many ways to define what an expert is.
 For example, an often cited rule is that one requires 10000 hours of deliberate practice
 in a particular field to become an expert \cite{Gla08}. But if we want to provide novice programmers
 with specifics during these 10000 hours to aid deliberate practice \cite{Eri93}, what should we tell them?
+What features are common to expert ML programmers?
 
-We attempt to shed light onto this problem by employing software metrics,
-by trying to find measurable quantities
-that provide some metric for qualifying expert code.
-Thus, we can describe what is good based on what experts do, not on what they say.
-Specifically, we will examine source code written by experts.
+Our central hypothesis is that there exist meaningful measurements
+that we can perform on expert source code that will allow us
+to identify common features of expert code. Since there are many more
+measurements we can make than we can reasonably cover in a reasonable
+amount of time, we have chosen to look at style,
+syntax, and how experts organize their code.
+These features can then guide the beginner by helping them
+to better model their code after experts.
+The rest of this paper describes our attempts to infer these
+common features from our measurements on expert code.
 
 For samples of expert code, we turned to prominent projects where the source code is readily available:
 \begin{enumerate}
@@ -103,6 +109,11 @@ We ran into a few challenges and complications when analyzing the code.
 In order to focus on real code, we've chosen to ignore source files that are associated
 with testing, regression, or microbenchmarks. On inspection, these files contain much more imperative
 code and do not make the same use of the module system than core files of each project.
+In addition, from the author's experience, test code often requires features
+outside of the interface presented to general users, and as such, the
+code accessed and modifies data in ways that might be considered undesirable
+for production code. It seems fair therefore to exclude code used for
+testings and other similar quality assessments from our overall analysis.
 
 In addition to this issue, we had trouble with infix expressions appearing in code.
 The ML parser works in two stages: the first treats all function applications
@@ -119,7 +130,7 @@ of the pre-infix parse tree obtained from the SML/NJ ``Visible Compiler.''
 The second parser is likely located inside the elaborator module
 of the compiler, and future work might attempt to
 correctly parse all infix operators.
-\section{SOFTWARE METRICS AND SOURCE CODE ANALYSIS}\label{sec:metric}
+\section{BACKGROUND}\label{sec:metric}
 \subsection{SOFTWARE METRICS}
 One way to tackle the challenges and complexities of software development is to employ
 \emph{software metrics}. These metrics allow developers and their managers to make
@@ -174,9 +185,7 @@ As \cite{Ker78} state, ``clean code is easier to maintain.''
 Therefore, as groups of experts work on a large project over
 a long period of time, they likely adopt standards that
 make their collaboration easier.
-The challenge will be to 
-make some sense of what ``good style'' actually is
-and then see if experts conform to these guidelines.
+The challenge will be to find metrics that reflect stylistic elements of expert code.
 \subsection{Style Guides}\label{subsec:guide}
 If we wish to examine how well expert code conforms to style, we need some starting point for
 what good style is. A quick search of the web yielded three style guides, from which
@@ -188,8 +197,8 @@ we will distill a few points of style to examine in the expert code:
 \end{enumerate}
 
 Again, we cannot take these style guides at face value; rather, we use
-the style guides as starting points, whose suggestions are potential
-features of analysis.
+the style guides as starting points, whose guidelines suggest measurables
+to analyze.
 \subsection{Tabs vs. Spaces}\label{subsec:tab}
 The three style guides we selected are
 united on the view that tabs are taboo in ML code. To paraphrase the CMU
@@ -233,8 +242,8 @@ tabs are not used with much consistency.
 Til strongly favors tabs since we find very few opportunities to make a tab replacement.
 MLton, on the other hand, as its style guide recommends, exclusively
 uses spaces instead of tabs. The reason for inconsistency in the first three projects
-may be due to differing preferences of its contributors, but we must postpone
-any concrete conclusions until we have collected more data.
+may be due to differing preferences of its contributors, but such judgment
+must await more analysis of the data.
 \subsection{The 80-Column Rule}\label{subsec:80}
 All three style guides recommend a line of code should not exceed 80 columns.
 The 80-column rule is a UNIX convention and many text editors automatically
@@ -278,7 +287,7 @@ which we could be unable to detect with our simplistic analysis above.
 \includegraphics[scale=0.68]{foxnet.eps} & \includegraphics[scale=0.68]{til.eps} \\
 \includegraphics[scale=0.68]{mlton.eps} &
 \end{tabular}
-\caption{Fraction of lines and number of lines at least as wide as a given column limit}
+\caption{Fraction of lines and number of lines at least as wide as a given column limit.}
 \label{fig:width}
 \end{figure}
 
@@ -316,7 +325,7 @@ to conform to some column limit since the fraction of lines falls more quickly n
 the threshold than at smaller or larger limits. As before, it is difficult to
 draw convincing conclusions from the FoxNet data because we are unsure
 whether the features are real or simply an artifact of data discreteness.
-\begin{figure}[h!]
+\begin{figure}[bh!]
 \centering
 \begin{tabular}{cc}
 \includegraphics[scale=0.68]{log-smlnj.eps} & \includegraphics[scale=0.68]{log-mlkit.eps} \\
@@ -380,7 +389,7 @@ FoxNet & 0 & -- \\
 Til & 23 & 4774.5 \\
 MLton & 30 & 1940.9 \\ \hline
 \end{tabular}
-\caption{Instances of verbosity in \texttt{if} expressions (see text)}
+\caption{Instances of verbosity in \texttt{if} expressions (see text).}
 \label{table:style}
 \end{table}
 
@@ -419,7 +428,7 @@ or
 \texttt{fun f }\(e_{1}\ldots e_{i-1}\)\texttt{ \_ }\(e_{i+1}\ldots e_{n}\) \texttt{= ...}
 
 \end{center}
-\caption{A simplistic pattern for identifying explicit recursion that can be replaced with a fold}
+\caption{A simplistic pattern for identifying explicit recursion that can be replaced with a fold.}
 \label{fig:folddef}
 \end{figure}
 
@@ -437,7 +446,8 @@ call to the recursive function on the tail. In addition, we want our recursion t
 correctly, hence, the additional requirement that the function define a case that handles
 the null list.
 We, however, cannot claim to be able to identify all
-fold opportunities correctly because of our inability to correctly parse infix expressions.
+fold opportunities correctly because of our inability
+to correctly parse infix expressions.
 
 After performing an initial analysis, we looked at some
 random samples of the violations we found.
@@ -464,22 +474,15 @@ it is inefficient to use a fold on a long list because
 we cannot take advantage of the short-circuiting behavior
 of the shown in this explicitly recursive function.
 
+Thus, not only can we not find all fold opportunities,
+even the opportunities we find are not necessarily
+translatable into a fold.
+
 \begin{figure}
 \begin{enumerate}
 \item
 \begin{verbatim}
-fun try ((d as {name,rep,domain})::r) =
-      (case rep of
-         A.TAGGED i => if chk(gettag, i) then d else try r
-       | A.CONSTANT i => if chk(Obj.toInt, i) then d else try r
-       | A.TRANSPARENT => d
-       | A.UNTAGGED => if Obj.boxed obj then d else try r
-       | A.REF => d
-       | A.LISTCONS => if (Obj.boxed obj) then d else try r
-       | A.LISTNIL => if chk(Obj.toInt, 0) then d else try r
-       | A.SUSP _ => d  (* LAZY *)
-       | _ => bug "switch: funny datacon"
-       (* end case *))
+fun try ((d as {name,rep,domain})::r) = ...
   | try [] = bug "switch: none of the datacons matched"
 \end{verbatim}
 \item
@@ -490,16 +493,12 @@ fun parseArgs [] acc = List.rev acc
         then
           case keyword x
             of NONE => parseArgs xr acc
-             | SOME Unknown => parseArgs xr (Data.Default x :: acc)
-             | SOME (Eq a) => parseArgs xr (a::acc)
+               ...
              | SOME f => case xr of
-                           [] =>
-                             raise
-                               Data.BadArg (x ^ " takes one argument")
+                           ...
                          | (x'::xr') =>
                              parseArgs xr'
-                               ((data x (toArgKind f) (next x x')) ::
-                                   acc)
+                               ((data x (toArgKind f) (next x x')) :: acc)
         else parseArgs xr (Data.Default x :: acc)
 \end{verbatim}
 \item
@@ -509,7 +508,7 @@ fun find (h :: t) = if h=index_n2 then true else find t
 \end{verbatim}
 \end{enumerate}
 \caption{Examples of ``missed fold opportunities''. Example 1 cannot be written as a fold
-because there is not initial accumulator.
+because there is no initial accumulator.
 Example 2 can skip an element in the list
 and is thus not condusive to translation into a fold. Example 3
 can be written as a fold but would then not benefit from short-circuit testing.}
@@ -517,7 +516,9 @@ can be written as a fold but would then not benefit from short-circuit testing.}
 \end{figure}
 
 We are forced to conclude that our simple framework for finding folds
-is unfortunately unsound. The two primary reasons are that explicit recursion
+is unfortunately unsound.
+The two primary reasons that the examples it finds are not necessary
+opportunities for fold are that explicit recursion
 can encode imperative behavior and provide behavior other than a simple
 linear traversal of a list.
 The problem with our simplistic pattern in Figure~\ref{fig:folddef}
@@ -554,7 +555,7 @@ FoxNet & 2 & 4099.50 \\
 Til & 4 & 27453.2 \\
 MLton & 1 & 58226.0 \\ \hline
 \end{tabular}
-\caption{Missed opportunities to use map or filter}
+\caption{Missed opportunities to use map or filter.}
 \label{table:mapfilter}
 \end{table}
 
@@ -611,7 +612,7 @@ fun example x =
     val _ = so does this line
     ...
 \end{verbatim}
-\caption{Trouble detecting violations of the offside rule}
+\caption{Trouble detecting violations of the offside rule.}
 \label{fig:offside}
 \end{figure}
 \section{SYNTACTIC FORMS}\label{sec:syntax}
@@ -650,7 +651,7 @@ FoxNet & 0 & -- \\
 Til & 2 & 54906.5 \\
 MLton & 0 & --\\ \hline
 \end{tabular}
-\caption{Occurrences of \texttt{while} expressions}
+\caption{Occurrences of \texttt{while} expressions.}
 \label{table:while}
 \end{table}
 As we can see from Table~\ref{table:while}, only the Til
@@ -677,7 +678,7 @@ FoxNet & 68 & 120.6 \\
 Til & 1,928 & 59.96 \\
 MLton & 641 & 90.84 \\ \hline
 \end{tabular}
-\caption{Occurrences of expressions lists}
+\caption{Occurrences of expressions lists.}
 \label{table:explist}
 \end{table}
 Table~\ref{table:explist} shows how often expression lists are used in our
@@ -720,7 +721,7 @@ FoxNet & 70 & 117.13 \\
 Til & 427 & 257.17 \\
 MLton & 731 & 79.653 \\ \hline
 \end{tabular}
-\caption{Occurrences of imperative \texttt{val} bindings}
+\caption{Occurrences of imperative \texttt{val} bindings.}
 \label{table:val}
 \end{table}
 
@@ -733,7 +734,7 @@ to achieve execute one-time imperative code.
 Imperative features are clearly unavoidable as evidenced in expert ML code. The experts do
 limit their uses of expression lists to a few general cases, mostly dominated by I/O.
 We conclude that the ML experts believe in the ``functional, side-effect-free'' style
-and conform to it as much as possible. Beginners in ML are encouraged for follow their example.
+and conform to it as much as possible.
 \subsection{List Library Functions}\label{subsec:list}
 We wanted to see if there was any discernable pattern in how expert programmers
 used library functions, but not all projects require the same library.
@@ -833,11 +834,13 @@ abstraction and modularity by using structures, signatures, and functors.
 Project & Files with module declarations & Fraction & Files with only module declarations & Fraction \\ \hline\hline
 SML/NJ & 297 & 0.99 & 297 & 0.99 \\
 MLKit & 1,308 & 0.99 & 1,270 & 0.96 \\
-FoxNet & 30 & 0.42 & 29 & 0.40 \\
+FoxNet & 30 & 0.42 (0.94) & 29 & 0.40 (0.91) \\
 Til & 445 & 0.97 & 443 & 0.96 \\
 MLton & 397 & 0.94 & 386 & 0.91 \\ \hline
 \end{tabular}
-\caption{Proportion of files that, at top level, contain module declarations or only contain module declarations.}
+\caption{Proportion of files that, at top level, contain module declarations or only contain module declarations.
+For FoxNet, the fractions in parentheses are obtained if we a certain group files that contain
+directory listings (see text).}
 \label{table:module}
 \end{table}
 
@@ -847,12 +850,20 @@ We find that in larger projects, almost every single file contains a functor, si
 definitions at top level. Nearly as many have at least one such declaration in a file.
 The smaller FoxNet project stands out as having a smaller fraction in both cases.
 
-We believe that these data reflect that as projects get large, expert ML coders
-make very heavy use of the ML module system to help manage the complexity.
-Due to the experts' heavy reliance on the ML module system,
-we suggest to beginners to also make good use of the ML module system
-to impart modularity and some level of abstraction to their work, particularly
-when the projects they are working on grow in size.
+On closer inspection, a very large fraction of the files that do not contain only module declarations
+in FoxNet contain a single \texttt{val} declaration for files in a directory. It is unclear
+from the scant documentation how this value is used, and a search within the source code
+suggests that these values are not used at all.
+Because it is unclear what role these declarations play, we hesitate to remove
+them completely from our overall analysis. We will consider
+how their exclusion affects the modularity of FoxNet.
+The values in parentheses in Table~\ref{table:module} show what
+fraction of source files in FoxNet contain at least one or only module declarations at top level
+if the files with these \texttt{val} declarations are excluded. We see that
+with this pruning of the data, FoxNet also shows a high degree of modularity as we have defined it.
+
+We believe that these data reflect expert ML coders
+make very heavy use of the ML module system to help manage the complexity of their projects.
 \subsubsection{Helper Functions in \texttt{let} Expressions and \texttt{local} Declarations}\label{subsubsec:let}
 Helper functions allow programmers to refer to recurring code by name.
 They can also help make the code more readable by giving complicated
@@ -876,7 +887,7 @@ FoxNet & 103 & 19 & 122 & 530 & 0.23 \\
 Til & 1,856 & 500 & 2,356 & 5,627 & 0.42 \\
 MLton & 1,004 & 252 & 1,256 & 3,533 & 0.36 \\\hline
 \end{tabular}
-\caption{Functions declared inside of \texttt{let} expressions}
+\caption{Functions declared inside of \texttt{let} expressions.}
 \label{table:funlet}
 \end{table}
 
@@ -886,21 +897,21 @@ entire project.
 In the larger four projects, at least one-third of all function declarations occur
 inside of a local or a let binding. As argued above, these are likely to be helper functions.
 The experts are quite fond of helper functions if one out of every three functions
-are helper functions. Beginners are encouraged for follow their example.
-\section{MAKING SENSE OF RECOMMENDATIONS}\label{sec:rec}
+are helper functions.
+\section{SUMMARY OF FEATURES}\label{sec:rec}
 Instead of having a veritable witch's brew of recommendations for beginners,
 we thought it might be useful to group them into categories both to
 organize the concepts and because research has shown that grouping items into
 ``chunks'' helps memory and learning \cite{Gob01}.
 
-In retrospect, we see that all of our recommendations touch on the structure of
-an ML program in some way, and we can classify the recommendations as dealing
+In retrospect, we see that the features we found touch on the structure of
+an ML program in some way, and we can classify these features into groups of recommendations dealing
 with (1)~typographic structure, (2)~syntactic structure, or (3)~organizational structure.
 \subsection{Typographic Structure}
 By typographic structure, we mean how the code physically looks and the mechanisms
 used to enhance or emphasize visualization. The typographic structure rules are:
 \begin{enumerate}
-\item There is no general consensus on tabs vs.\ spaces. Pick one and be consistent.
+\item There is no general consensus on tabs vs.\ spaces. Some experts do make an effort at consistency.
 \item Try to keep under 80 columns of text, but it's OK go over occasionally.
 \end{enumerate}
 Typographic structure is important because it makes code easier to read and therefore
@@ -910,12 +921,12 @@ Syntactic structure covers when and what syntactic elements and features of ML t
 in a source file. These rules are derived from expert choices in the same
 situations and are likely motivated by reasons of code legibility and efficiency:
 \begin{enumerate}
-\item Rewrite if expressions if one of the branches is a boolean literal or if the test is \texttt{not} applied a boolean expression
+\item Rewrite \texttt{if} expressions if one of the branches is a boolean literal or if the test is \texttt{not} applied a boolean expression
 \item Folds are nice if appropriate, but experts almost always use \texttt{map} and \texttt{filter} when given the option.
 \item Avoid \texttt{while} loops.
 \item Expression lists are OK for I/O.
 \item Imperative \texttt{val} bindings are OK for I/O.
-\item Use list library functions when possible, especially \texttt{map} and folds.
+\item Use list library functions when possible, especially \texttt{map}.
 \item Pattern match on lists instead of using \texttt{hd} or \texttt{tl}
 \end{enumerate}
 \subsection{Organizational Structure}
@@ -930,17 +941,18 @@ organization is key. These rules are derived from observing how experts organize
 \section{CONCLUSIONS AND CONTRIBUTIONS}\label{sec:future}
 The key contributions of this project are three-fold. First, we
 identified some features of ML expertise. These features are
-selected not based on what experts recommend but rather on how they
-write their own code. This is also the key area for future work
-because there are certainly many more features that could be examined.
+selected not based on what experts recommend but rather on
+measurements we performed on what their code looks like.
+This is also the key area for future work because there are
+certainly many more measurements that could be made and features to infer from those measurements.
 
 Second, we've distilled some useful rules for novices based
 on our discoveries and organized them into categories
 to better aid understanding and application of these rules.
 
 Finally, we've created a set of tools that programmers of all levels
-can use to evaluate how well they are performing on the above
-eight points. The primary audience is intended to be novices,
+can use to evaluate how well they are performing in terms of our metrics.
+The primary audience is intended to be novices,
 who can receive feedback on how well certain features
 of their code mirror those of experts. As more features are examined
 in future work, the tools will certainly be expanded to cover those
