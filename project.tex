@@ -562,8 +562,8 @@ Table~\ref{table:mapfilter} shows the results of the analysis.
 Very few opportunities for using either map or filter exist.
 Indeed, the experts are very keen on using these fold variants
 instead explicit of explicit recursion.
-We show (in section \ref{subsec:list})
-that \texttt{map} and \texttt{filter} are called quite frequently.
+This is particularly true with \texttt{map}, which we will show in section \ref{subsec:list}
+is quite called quite frequently.
 A random sampling of the violating declarations suggest that
 these missed opportunities are generally truly missed opportunities.
 Quite interestingly also, FoxNet seems to implement its own library
@@ -743,36 +743,41 @@ in the \texttt{List} structure from the standard basis.
 
 \begin{table}[h!]
 \centering
-\begin{tabular}{|p{1in}||>{\centering\arraybackslash}p{0.62in}|>{\centering\arraybackslash\hspace{0pt}}p{0.9in}|>{\centering\arraybackslash\hspace{0pt}}p{0.6in}|>{\centering\arraybackslash\hspace{0pt}}p{0.5in}|>{\centering\arraybackslash\hspace{0pt}}p{0.6in}|}
+\begin{tabular}{|l||c|c|c|c|c||c|}
 \hline
-Function & SML/NJ & MLKit & FoxNet & Til & MLton \\ \hline\hline
-\texttt{::} & 882 & 6,350 & 97 & 801 & 372 \\
-\texttt{@} & \textbf{205} & \textbf{602} & \textbf{18} & \textbf{248} & \textbf{69} \\
-\texttt{all} & 13 & 76 & 0 & 53 & 35 \\
-\texttt{app} & \textbf{331} & \textbf{728} & 3 & \textbf{340} & \textbf{45} \\
-\texttt{drop} & 0 & 28 & 0 & 7 & 2 \\
-\texttt{exists} & 24 &  96 & 0 & 25 & 28 \\
-\texttt{filter} & 17 & 138 & 3 & 4 & 8 \\
-\texttt{find} & 48 & 130 & 0 & 48 & 13 \\
-folds\hspace{2in}(\texttt{foldl},\texttt{foldr}) & \textbf{237} (89,\textbf{148}) & \textbf{920} (522,398) & \textbf{15}\hspace{1in}(7,8) & \textbf{171} (59,112) & \textbf{57} (30,27) \\
-\texttt{getItem} & 0 & 20 & 0 & 0 & 2 \\
-\texttt{hd} & 42 & 44 & 0 & 133 & 16 \\
-\texttt{last} & 8 & 78 & 0 & 2 & 22 \\
-\texttt{length} & \textbf{163} & 578 & 3 & 119 & \textbf{87} \\
-\texttt{map} & \textbf{701} & \textbf{1,724} & \textbf{60} & \textbf{1,029} & \textbf{108} \\
-\texttt{mapPartial} & 7 & 26 & 0 & 0 & 3 \\
-\texttt{nth} & 5 & 4 & 0 & 6 & 8 \\
-\texttt{null} & 8 & 50 & 0 & 1  & 20 \\
-\texttt{partition} & 14  & 14 & 0 & 3 & 2 \\
-\texttt{rev} & 137 & 472 & \textbf{13} & \textbf{178} & \textbf{120} \\
-\texttt{revAppend} & 1 & 0 & 0 & 0 & 1 \\
-\texttt{tabulate} & 1 & 18 & 0 & 0  & 13 \\
-\texttt{take} & 6 & 10 & 0 & 10 & 1 \\
-\texttt{tl} & 54 & 114 & 0 & \textbf{171} & 26 \\\hline\hline
-Total & 2,904 & 12,220 & 212 & 3,349 & 1,058 \\
-Lines per call & 27.928 & 25.054 & 38.674 & 32.790 & 55.034 \\\hline
+Function & SML/NJ & MLKit & FoxNet & Til & MLton & Mean fraction of calls \\ \hline\hline
+\texttt{::} & \textbf{882} & \textbf{6,350} & \textbf{97} & \textbf{801} & \textbf{372} & 0.3743 \\
+\texttt{map} & \textbf{701} & \textbf{1,724} & \textbf{60} & \textbf{1,029} & \textbf{108} & 0.2150 \\
+\texttt{@} & \textbf{205} & \textbf{602} & \textbf{18} & \textbf{248} & \textbf{69} & 0.0688 \\
+folds & \textbf{237} & \textbf{920} & \textbf{15} & \textbf{171} & \textbf{57} & 0.0664 \\
+\hspace{0.2in}\texttt{foldl} & 89 & 522 & 7 & 59 & 30 & 0.0304 \\
+\hspace{0.2in}\texttt{foldr} & \textbf{148} & 398 & 8 & 112 & 27 & 0.0360 \\
+\texttt{app} & \textbf{331} & \textbf{728} & 3 & \textbf{340} & \textbf{45} & 0.0664 \\
+\texttt{rev} & 137 & 472 & \textbf{13} & \textbf{178} & \textbf{120} & 0.0627 \\
+\texttt{length} & \textbf{163} & 578 & 3 & 119 & \textbf{87} & 0.0471 \\
+\texttt{tl} & 54 & 114 & 0 & \textbf{171} & 26 & 0.0207 \\
+\texttt{hd} & 42 & 44 & 0 & 133 & 16 & 0.0146 \\
+\texttt{all} & 13 & 76 & 0 & 53 & 35 & 0.0119 \\
+\texttt{find} & 48 & 130 & 0 & 48 & 13 & 0.0107 \\
+\texttt{exists} & 24 & 96 & 0 & 25 & 28 & 0.0100 \\
+\texttt{filter} & 17 & 138 & 3 & 4 & 8 & 0.0080 \\
+\texttt{last} & 8 & 78 & 0 & 2 & 22 & 0.0061 \\
+\texttt{null} & 8 & 50 & 0 & 1  & 20 & 0.0052 \\
+\texttt{tabulate} & 1 & 18 & 0 & 0  & 13 & 0.0028 \\
+\texttt{nth} & 5 & 4 & 0 & 6 & 8 & 0.0023 \\
+\texttt{partition} & 14  & 14 & 0 & 3 & 2 & 0.0018 \\
+\texttt{mapPartial} & 7 & 26 & 0 & 0 & 3 & 0.0015 \\
+\texttt{take} & 6 & 10 & 0 & 10 & 1 & 0.0014 \\
+\texttt{drop} & 0 & 28 & 0 & 7 & 2 & 0.0013 \\
+\texttt{getItem} & 0 & 20 & 0 & 0 & 2 & 0.0007 \\
+\texttt{revAppend} & 1 & 0 & 0 & 0 & 1 & 0.0003 \\
+\hline\hline
+Total & 2,904 & 12,220 & 212 & 3,349 & 1,058 & \\
+Lines per call & 27.928 & 25.054 & 38.674 & 32.790 & 55.034 & \\\hline
 \end{tabular}
-\caption{Calls to functions from the \texttt{List} structure (\texttt{concat} omitted). Bolded entries each account for more than 5\% of the total number of occurrences in a project.}
+\caption{Calls to functions from the \texttt{List} structure (\texttt{concat} omitted) ordered by the average
+fraction of calls that each function contributes in the five projects.
+Bolded entries each account for more than 5\% of the total number of occurrences in a project.}
 \label{table:list}
 \end{table}
 
@@ -791,8 +796,10 @@ basically stay constant, relative to each other, even when we exclude the occurr
 
 The values in bold indicate that a function accounts for more than 5\% of all function calls to the \texttt{List} structure.
 We see that folds (both left and right), list concatenation (\texttt{@}), and \texttt{map} break the threshold in all 5 projects. Between them,
-\texttt{map} is more common, with a frequency matching the cons operator in some cases. This
-suggests possibly that expert coders in ML are transforming data in bulk within a list container.
+\texttt{map} is more common, with a frequency matching the cons operator in some cases.
+This suggests possibly that expert coders in ML are transforming data in bulk within a list container.
+Indeed, outside of the cons operator, \texttt{map} seems to be by far the most common function called
+from the \texttt{List} structure.
 
 The pair of fold functions, taken together, break the threshold on all five projects.
 This is perhaps not surprising since a fold is an excellent way to aggregate data in a list
@@ -805,18 +812,13 @@ considered an imperative version of \texttt{map}, which we have observed is call
 that not only do expert programmers transform data in bulk as a list with \texttt{map}, the execute side effects
 in bulk in a list with \texttt{app}.
 
-Finally, we point out that the Til project makes heavy use of the head (\texttt{hd}) and tail (\texttt{tl})
-functions which respectively return the first element and all but the first element in a list.
-That no other project makes heavy use of these two functions is interesting because from
+Finally, we point out that \texttt{hd} and \texttt{tl} account for, on average, only about 2\% of all
+function calls. Only in Til does \texttt{tl} exceed our 5\% threshold (and just barely at 5.1\%).
+The \texttt{hd} and \texttt{tl} functions respectively return the first element and all but the first element in a list.
+That they are used relatively infrequently is interesting because from
 the author's experience, extracting the head and tail of a list is unavoidable in practice.
-It is likely that the other four projects make heavy use of pattern matching on a cons cell (e.g., \texttt{x ::\ xs})
+It is likely that expert coders prefer pattern matching on a cons cell (e.g., \texttt{x ::\ xs})
 instead of explicitly calling either \texttt{hd} or \texttt{tl}.
-
-To conclude this section, we recommend to beginners to make heavy use of library functions
-for lists. The experts particularly seem to like the list mapping and list concatenation operators.
-And despite our criticism of missed fold opportunities, folds are also quite common in code.
-Based on a preference by coders on four of five projects, we recommend using pattern
-matching to extract the head and tail of a list instead of explicit function calls.
 \subsection{Program Hierarchy and Layout}\label{subsec:struct}
 \subsubsection{Modularity and Abstraction}\label{subsubsec:modularity}
 Program modularity eases the burden of maintenance and refactoring.
