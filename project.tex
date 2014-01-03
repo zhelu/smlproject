@@ -81,9 +81,12 @@ style, syntax, and organization in ML programs.
 \section{INTRODUCTION}
 There are many ways to define what an expert is.
 For example, an often cited rule is that one requires 10000 hours of deliberate practice
-in a particular field to become an expert \cite{Gla08}. But if we want to provide novice programmers
-with specifics during these 10000 hours to aid deliberate practice \cite{Eri93}, what should we tell them?
-What features are common to expert ML programmers?
+in a particular field to become an expert \cite{Gla08}. 
+Deliberate practice is most effective when we can provide ``immediate informative feedback''
+and ``knowledge of results of \ldots performance.'' \cite{Eri93} Thus, we can help beginners 
+improve their learning and development
+by giving them a sense for how well their code mirrors that of the expert.
+But what features are common to code written expert ML programmers?
 
 Our central hypothesis is that there exist meaningful measurements
 that we can perform on expert source code that will allow us
@@ -111,9 +114,9 @@ with testing, regression, or microbenchmarks. On inspection, these files contain
 code and do not make the same use of the module system than core files of each project.
 In addition, from the author's experience, test code often requires features
 outside of the interface presented to general users, and as such, the
-code accessed and modifies data in ways that might be considered undesirable
-for production code. It seems fair therefore to exclude code used for
-testings and other similar quality assessments from our overall analysis.
+code accesses and modifies data in ways that might be considered undesirable
+for production code. It seems fair, therefore, to exclude code used for
+tests and other similar quality assessments from our overall analysis.
 
 In addition to this issue, we had trouble with infix expressions appearing in code.
 The ML parser works in two stages: the first treats all function applications
@@ -123,10 +126,10 @@ see if it is an infix operator and if so, to determine its
 operator precedence. However,
 the presence of \texttt{open} declarations and the
 heavy use of the compilation manager in each project
-make it quite difficult to ascertain either if an
-operator is infix or its operator precedence.
+make it quite difficult to ascertain if an
+operator is infix and if so, its operator precedence.
 Therefore, we performed our analysis on measurable features
-of the pre-infix parse tree obtained from the SML/NJ ``Visible Compiler.''
+of the pre-infix parse tree obtained from the first stage of the SML/NJ ``Visible Compiler.''
 The second parser is likely located inside the elaborator module
 of the compiler, and future work might attempt to
 correctly parse all infix operators.
@@ -146,7 +149,8 @@ their workflows \cite{Ord08}.
 
 For our project, the whole of software metrics is too monolithic to employ on
 such a small-scale project. Therefore, we aim to look at a more specific set of measurements,
-mostly dealing with style. This approach has been used for C++ \cite{Aye98} and C \cite{Tak11}.
+mostly dealing with style and syntax. Measurements based on style guides
+have been applied to projects written in both C++ \cite{Aye98} and C \cite{Tak11}.
 \subsection{SOURCE CODE ANALYSIS}
 In an effort to understand what good code looks like, we analyze source code
 written by experts. \cite{Bin07} provides a definition:
@@ -215,9 +219,9 @@ occur in leading spaces on a line of text. We now state the rule for replacement
 a group of contiguous spaces (more than 1) such that the last space lands
 on a column divisible by $n$ can be all replaced with a tab character.
 For two groups that both satisfy the rule, the one that occurs first takes precedence.
-Notice that using $n = 8$ in our analysis produces the fewest number of
+Notice that using $n = 8$ (the UNIX standard), rather than 2 or 4, in our analysis produces a smaller number of
 opportunities for tabs. Therefore, it is possible we may undercount the opportunities
-relative to the number of tabs used.
+relative to the number of tabs used if a project actually uses a smaller default tab size.
 With these definitions and conventions in hand,
 we can now examine the expert code.
 
@@ -239,13 +243,13 @@ MLton & 56,189 & 0 & $\infty$ \\ \hline
 We can see from Table~\ref{table:tabs} that
 in the SML/NJ, MLKit, and FoxNet projects,
 tabs are not used with much consistency. 
-Til strongly favors tabs since we find very few opportunities to make a tab replacement.
+Til strongly favors tabs since we find very few opportunities to make a tab replacement relative to the number of tabs actually used.
 MLton, on the other hand, as its style guide recommends, exclusively
 uses spaces instead of tabs. The reason for inconsistency in the first three projects
 may be due to differing preferences of its contributors, but such judgment
-must await more analysis of the data.
+must await analysis of future experiments.
 \subsection{The 80-Column Rule}\label{subsec:80}
-All three style guides recommend a line of code should not exceed 80 columns.
+All three style guides recommend that a line of code should not exceed 80 columns.
 The 80-column rule is a UNIX convention and many text editors automatically
 wrap at 80 columns \cite{Cmu12}.
 
@@ -264,9 +268,9 @@ MLton & 713 & 81.663 \\ \hline
 \label{table:width}
 \end{table}
 
-The example code from the expert ML users we looked at clearly cannot
+The example code from the expert ML users we examined show that the experts clearly cannot
 resist violating the 80-column rule (Table~\ref{table:width}), with
-those for MLKit being particularly egregious. While most editors can be configured to insert
+those for MLKit being particularly egregious. Perhaps one difficulty is that while most editors can be configured to insert
 spaces in place of tabs, there is no active check on enforcing the 80-column
 rule while coders are working.
 Indeed, MLton contains many width violations in spite of what is stated in their style guide.
@@ -296,7 +300,7 @@ as an inverse cumulative histogram and an inverse cumulative density. In the SML
 we notice an ``elbow'' in the plot around 80 columns. This inflection represents
 an effort to limit the maximum width of lines. The tail of the inverse cumulative
 histogram represents the failure to stay within the intended limit. We notice
-also such as ``elbow'' in the MLton project, which we hypothesize
+also such as ``elbow'' in the MLton project near 80 columns, which we hypothesize
 to mean that it also conforms generally to an 80-column limit.
 
 FoxNet presents a more interesting profile in its inverse cumulative histogram. We see
@@ -311,7 +315,7 @@ inverse cumulative histogram at all. This implies that the implementers of MLKit
 and Til made little effort to limit line width at all!
 
 Figure~\ref{fig:log-width} shows the same data plotted on a logarithmic scale.
-We notice that the plots are quite linear ($R^{2} > 0.99$) for MLKit and Til.
+Here, we notice that the plots are quite linear ($R^{2} > 0.99$) for MLKit and Til.
 This suggests an exponential decay in the number of violations as we increase the
 threshold for violations. It certainly seems plausible that \emph{without} a
 specified column limit, each increment in width limit results in a constant
@@ -400,8 +404,8 @@ that beginners frequently overlook opportunities to
 use library functions for lists. Since many of the basis functions
 for lists, for example, \texttt{map}, \texttt{exists}, \texttt{all}, \texttt{filter},
 and \texttt{rev}, can be written in terms of a fold over a list, we decided to look
-for missed opportunities to apply a fold \cite{Jeu13}.
-states that using higher order recursion schemes like a fold can allow a program
+for missed opportunities to apply a fold.
+\cite{Jeu13} state that using higher order recursion schemes like a fold can allow a program
 to benefit from shortcut fusion, and they
 describe an algorithm for turning
 explicitly recursive functions into folds.
@@ -433,12 +437,13 @@ or
 \end{figure}
 
 That is, we're explicitly calling a recursive function on the tail of a input list.
-The only other restriction is that the only list literal we allow in the same position
+The only other restriction is that the only list literal we allow in the same position of
 a declared pattern is the empty list literal (\texttt{[]}). This prevents idiosyncratic
-behavior from being introduced into an otherwise sound definition by structural induction.
+behavior from ruining a otherwise simple defintion by structural induction.
 We won't concern ourselves with the order of the pattern match because either the patterns
 are mutually exclusive (e.g., \texttt{[]} or a cons cell) or there is a redundant match
 and the compiler will throw an error.
+
 The motivation behind our definition is that a fold over a list in essence
 a function that consumes a list. Explicit recursion defining this consumer must
 consume a smaller list on each call, hence the requirement with a cons cell and a
@@ -456,7 +461,7 @@ A good number of these fold opportunities cannot actually
 be written as fold because on encountering the null list, an error or
 some other imperative code is executed. Example 1 falls under this category:
 we see that the imperative function \texttt{bug} is executed
-on a null list and potentially even as we are traversing the list.
+on a null list.
 Such a behavior cannot be captured by a fold because the value of a
 fold on the null list defines the default accumulator and none
 can be defined here.
@@ -472,7 +477,7 @@ using the \texttt{exists} library function from the \texttt{List}
 structure. While \texttt{exists} can be written as a fold,
 it is inefficient to use a fold on a long list because
 we cannot take advantage of the short-circuiting behavior
-of the shown in this explicitly recursive function.
+of the explicitly recursive function shown.
 
 Thus, not only can we not find all fold opportunities,
 even the opportunities we find are not necessarily
@@ -517,10 +522,6 @@ can be written as a fold but would then not benefit from short-circuit testing.}
 
 We are forced to conclude that our simple framework for finding folds
 is unfortunately unsound.
-The two primary reasons that the examples it finds are not necessary
-opportunities for fold are that explicit recursion
-can encode imperative behavior and provide behavior other than a simple
-linear traversal of a list.
 The problem with our simplistic pattern in Figure~\ref{fig:folddef}
 is that we've failed capture the fact that a fold must have a well-defined
 default accumulator and that it examines every element in a list.
@@ -566,9 +567,9 @@ instead explicit of explicit recursion.
 This is particularly true with \texttt{map}, which we will show in section \ref{subsec:list}
 is quite called quite frequently.
 A random sampling of the violating declarations suggest that
-these missed opportunities are generally truly missed opportunities.
+these missed opportunities are truly missed opportunities.
 Quite interestingly also, FoxNet seems to implement its own library
-of utility functions, and our analysis found two of their
+of utility functions, and our analysis found their two
 implementations of \texttt{filter} (\texttt{map} was not implemented).
 While we cannot argue that our analysis is sound, we suggest it might
 be a useful starting point for finding opportunities to apply
@@ -577,7 +578,7 @@ be a useful starting point for finding opportunities to apply
 The \emph{offside rule} states that if a declaration or expression (or any language construct)
 has to be split across multiple lines, later lines ought to be more indented relative to
 the first line \cite{Lan66}.
-The SML/NJ parser includes nodes with the name \texttt{MarkX} where \texttt{X} is
+The SML/NJ parser produces a parse tree that includes nodes with the name \texttt{MarkX} where \texttt{X} is
 one of the syntactic categories (e.g., \texttt{MarkDec} for declaration, \texttt{MarkExp} for expression,
 etc.). These are value constructors for the datatypes that represent the corresponding
 syntactic category and their arguments indicate the character position for both the start and the
@@ -589,7 +590,7 @@ the indentations of their parents.
 We ran into two complications with the analysis. The first is that when we have tabs present,
 \texttt{SourceMap} treats the tab character has having a width of 1. Clearly,
 this is not what we want. However, this problem is easily remedied 
-by replacing tab characters with an equivalent number of spaces.
+by expanding tab characters.
 We can try to replace the tab with enough spaces such that
 the last space ends on a column that is a multiple of 2, 4, or 8 (corresponding to those tab sizes)
 and examine how the offside rule is followed in each set of replacements.
@@ -599,13 +600,13 @@ is indented, \texttt{SourceMap} returns the level of indentation
 for the entire construct as the indentation for the first line.
 Thus, if the first line of the construct is too far indented, all subsequent
 lines get flagged for an offside violation, but the issue is most likely
-with the incorrect indentation of the first line. We must address this
+with the incorrect indentation of the first line (Figure~\ref{fig:offside}). We must address this
 issue in future work before we can accurately report the number
 of offside violations in the code.
-\begin{figure}[bh!]
+\begin{figure}[h!]
 \centering
 \begin{verbatim}
-fun example x =
+fun offsideExample x =
   let
       val _ = this line is indented too far to the right
     val _ = this line throws an offside violation
@@ -629,7 +630,8 @@ In Standard ML, there are two main constructs in terms of expressions that fit t
 The former has the form
 \[\texttt{while <boolean-expression> do <expression>}\] and always returns a value of unit type.
 The return value indicates that the \texttt{while} expression's purpose is to produce the side effects associated
-with the expression in its body. The sequence of expressions evaluates only to the last in that sequence, indicating
+with the expression in its body because the results of evaluating the body are discarded.
+The sequence of expressions evaluates only to the last in that sequence, indicating
 in a similar fashion that all expressions in the list except for the last are evaluated only for side effects.
 
 In addition, we can use the \texttt{val} declaration to assign the result
@@ -657,15 +659,9 @@ MLton & 0 & --\\ \hline
 As we can see from Table~\ref{table:while}, only the Til
 project uses \texttt{while} loops.
 In the two instances found in the Til project, the body of the \texttt{while}
-loop includes modifying a mutable reference, which justifies the use of
-an imperative feature. Getting rid of the while loops requires a design of how the code works so
+loop modifies a mutable reference, which justifies the use of
+an imperative feature. Getting rid of the while loops requires a redesign of how the code works so
 that we no longer need to keep track of mutable state and thus, is not very straightforward.
-
-Overall, we can observe that there are very few usages of \texttt{while} expressions
-in expert projects.
-From the analysis, expert ML programmers seemed quite principled in avoiding imperative
-elements of ML. This is perhaps not surprising since they could have chosen
-to implement in any language but selected a functional language in the end.
 \subsubsection{Expression Lists}
 \begin{table}[h!]
 \centering
@@ -793,24 +789,22 @@ Our results are tabulated in Table~\ref{table:list}.
 
 It is amazing that list functions are used with almost the same frequency (normalized
 by the number of lines) in every expert project. The normalized frequency
-basically stay constant, relative to each other, even when we exclude the occurrences of the cons operator.
+basically stays constant, relative to each other, even when we exclude the occurrences of the cons operator.
 
-The values in bold indicate that a function accounts for more than 5\% of all function calls to the \texttt{List} structure.
+The values in bold indicate that a function accounts for more than 5\% of all function calls to the \texttt{List} structure in a given project.
 We see that folds (both left and right), list concatenation (\texttt{@}), and \texttt{map} break the threshold in all 5 projects. Between them,
-\texttt{map} is more common, with a frequency matching the cons operator in some cases.
-This suggests possibly that expert coders in ML are transforming data in bulk within a list container.
-Indeed, outside of the cons operator, \texttt{map} seems to be by far the most common function called
-from the \texttt{List} structure.
+\texttt{map} is most common, with a frequency matching the cons operator in some cases,
+suggesting that expert coders in ML are quite fond of transforming data in bulk within a list container.
 
 The pair of fold functions, taken together, break the threshold on all five projects.
 This is perhaps not surprising since a fold is an excellent way to aggregate data in a list
 into another value, possibly even another list. Indeed, many of the functions on lists
 including \texttt{map} could be rewritten using a fold.
 
-Another function of note is \texttt{app}, which each accounts for more than 5\% of
-occurrences in four of five projects. The \texttt{app} is particularly interesting because it can be
+Another function of note is \texttt{app}, which accounts for more than 5\% of
+occurrences in four of five projects. The use of \texttt{app} is particularly interesting because it can be
 considered an imperative version of \texttt{map}, which we have observed is called quite often. We hypothesize
-that not only do expert programmers transform data in bulk as a list with \texttt{map}, the execute side effects
+that not only do expert programmers transform data in bulk as a list with \texttt{map}, they execute side effects
 in bulk in a list with \texttt{app}.
 
 Finally, we point out that \texttt{hd} and \texttt{tl} account for, on average, only about 2\% of all
@@ -847,11 +841,11 @@ directory listings (see text).}
 Table~\ref{table:module} shows what fraction of files define a structure, signature, or functor at top level
 and what fraction of files define only a structure, signature, or functor at top level.
 We find that in larger projects, almost every single file contains a functor, signature, or structure
-definitions at top level. Nearly as many have at least one such declaration in a file.
+definition at top level. Nearly as many have at least one such declaration in a file.
 The smaller FoxNet project stands out as having a smaller fraction in both cases.
 
 On closer inspection, a very large fraction of the files that do not contain only module declarations
-in FoxNet contain a single \texttt{val} declaration for files in a directory. It is unclear
+in FoxNet contain a single \texttt{val} declaration that is a list of file names in a directory. It is unclear
 from the scant documentation how this value is used, and a search within the source code
 suggests that these values are not used at all.
 Because it is unclear what role these declarations play, we hesitate to remove
@@ -874,7 +868,7 @@ a function is a helper function. But if a function appears inside
 the list of declarations in a \texttt{let} expression or a \texttt{local}
 declaration, one might hypothesize that it is likely a helper function
 of some sort, since its scope is limited to the body of the \texttt{let}
-or \texttt{local} construction.
+or \texttt{local} construct.
 
 \begin{table}[h!]
 \centering
@@ -895,7 +889,7 @@ Table~\ref{table:funlet} shows how functions are declared inside of \texttt{let}
 constructs, and what fraction that represents out of all function declarations in the
 entire project.
 In the larger four projects, at least one-third of all function declarations occur
-inside of a local or a let binding. As argued above, these are likely to be helper functions.
+inside of a \texttt{local} or a \texttt{let} binding. As argued above, these are likely to be helper functions.
 The experts are quite fond of helper functions if one out of every three functions
 are helper functions.
 \section{SUMMARY OF FEATURES}\label{sec:rec}
@@ -911,7 +905,7 @@ with (1)~typographic structure, (2)~syntactic structure, or (3)~organizational s
 By typographic structure, we mean how the code physically looks and the mechanisms
 used to enhance or emphasize visualization. The typographic structure rules are:
 \begin{enumerate}
-\item There is no general consensus on tabs vs.\ spaces. Some experts do make an effort at consistency.
+\item There is no general consensus on tabs vs.\ spaces, but some experts do make an effort at consistency.
 \item Try to keep under 80 columns of text, but it's OK go over occasionally.
 \end{enumerate}
 Typographic structure is important because it makes code easier to read and therefore
@@ -922,11 +916,10 @@ in a source file. These rules are derived from expert choices in the same
 situations and are likely motivated by reasons of code legibility and efficiency:
 \begin{enumerate}
 \item Rewrite \texttt{if} expressions if one of the branches is a boolean literal or if the test is \texttt{not} applied a boolean expression
-\item Folds are nice if appropriate, but experts almost always use \texttt{map} and \texttt{filter} when given the option.
+\item Experts almost always use \texttt{map} and \texttt{filter} when given the option.
 \item Avoid \texttt{while} loops.
 \item Expression lists are OK for I/O.
 \item Imperative \texttt{val} bindings are OK for I/O.
-\item Use list library functions when possible, especially \texttt{map}.
 \item Pattern match on lists instead of using \texttt{hd} or \texttt{tl}
 \end{enumerate}
 \subsection{Organizational Structure}
@@ -941,7 +934,7 @@ organization is key. These rules are derived from observing how experts organize
 \section{CONCLUSIONS AND CONTRIBUTIONS}\label{sec:future}
 The key contributions of this project are three-fold. First, we
 identified some features of ML expertise. These features are
-selected not based on what experts recommend but rather on
+selected based not on what experts recommend but rather on
 measurements we performed on what their code looks like.
 This is also the key area for future work because there are
 certainly many more measurements that could be made and features to infer from those measurements.
