@@ -81,9 +81,9 @@ style, syntax, and organization in ML programs.
 \section{INTRODUCTION}
 There are many ways to define what an expert is.
 For example, an often cited rule is that one requires 10000 hours of deliberate practice
-in a particular field to become an expert \cite{Gla08}. 
+in a particular field to become an expert \cite{Gla08}.
 Deliberate practice is most effective when we can provide ``immediate informative feedback''
-and ``knowledge of results of \ldots performance.'' \cite{Eri93} Thus, we can help beginners 
+and ``knowledge of results of \ldots performance.'' \cite{Eri93} Thus, we can help beginners
 improve their learning and development
 by giving them a sense for how well their code mirrors that of the expert.
 But what features are common to code written expert ML programmers?
@@ -184,7 +184,7 @@ of Strunk and White's \emph{The Elements of Style}.
 We therefore consider the parallel to programming, that
 good style leads to better code. Since experts must by
 definition write better code, we conjecture that they
-must have good style. 
+must have good style.
 As \cite{Ker78} state, ``clean code is easier to maintain.''
 Therefore, as groups of experts work on a large project over
 a long period of time, they likely adopt standards that
@@ -242,7 +242,7 @@ MLton & 56,189 & 0 & $\infty$ \\ \hline
 
 We can see from Table~\ref{table:tabs} that
 in the SML/NJ, MLKit, and FoxNet projects,
-tabs are not used with much consistency. 
+tabs are not used with much consistency.
 Til strongly favors tabs since we find very few opportunities to make a tab replacement relative to the number of tabs actually used.
 MLton, on the other hand, as its style guide recommends, exclusively
 uses spaces instead of tabs. The reason for inconsistency in the first three projects
@@ -291,12 +291,14 @@ which we could be unable to detect with our simplistic analysis above.
 \includegraphics[scale=0.68]{foxnet.eps} & \includegraphics[scale=0.68]{til.eps} \\
 \includegraphics[scale=0.68]{mlton.eps} &
 \end{tabular}
-\caption{Fraction of lines and number of lines at least as wide as a given column limit.}
+\caption{Fraction of lines and number of lines at least as wide as a given column limit. The difference between bars corresponding to width $n$ and width $n+1$ is
+equal to the fraction (or number) of lines with width exactly equal to $n$.}
 \label{fig:width}
 \end{figure}
 
 Figure~\ref{fig:width} shows the results of our analysis
-as an inverse cumulative histogram and an inverse cumulative density. In the SML/NJ project,
+as an inverse cumulative histogram.
+In the SML/NJ project,
 we notice an ``elbow'' in the plot around 80 columns. This inflection represents
 an effort to limit the maximum width of lines. The tail of the inverse cumulative
 histogram represents the failure to stay within the intended limit. We notice
@@ -419,20 +421,29 @@ find instances of the following form:
 
 \begin{figure}[!h]
 \begin{center}
-\texttt{fun f }\(e_{1}\ldots e_{i-1}\)\texttt{ (x::xs) }\(e_{i+1}\ldots e_{n}\)\texttt{=}\(e\)
-
-where $e$ has the subexpression \texttt{f }\(v_{1}\ldots v_{i-1}\)\texttt{ xs }\(v_{i+1}\ldots v_{n}\)
-
-And, either:
-
-\texttt{fun f }\(e_{1}\ldots e_{i-1}\)\texttt{ [] }\(e_{i+1}\ldots e_{n}\) \texttt{= ...}
-
-or
-
-\texttt{fun f }\(e_{1}\ldots e_{i-1}\)\texttt{ \_ }\(e_{i+1}\ldots e_{n}\) \texttt{= ...}
-
+\begin{tabular}{|l|}\hline
+\texttt{fun f }\(v_{1}\ldots v_{i-1}\)\texttt{ (x::xs) }\(v_{i+1}\ldots v_{n}\)\texttt{ =}\\
+\hspace{0.5in}\texttt{g }\(e_{1}\ldots e_{j-1}\)\texttt{ (f }\(v_{1}\ldots v_{i-1}\)\texttt{ xs }\(v_{i+1}\ldots v_{n}\)\texttt{) } \(e_{j+1}\ldots e_{m}\)\\
+\\
+And, either:\\
+\\
+\texttt{fun f }\(v_{1}\ldots v_{i-1}\)\texttt{ [] }\(v_{i+1}\ldots v_{n}\) \texttt{= }$e$\\
+\\
+or\\
+\\
+\texttt{fun f }\(v_{1}\ldots v_{i-1}\)\texttt{ }\underline{\hspace{0.1in}}\texttt{ }\(v_{i+1}\ldots v_{n}\) \texttt{= }$e$\\\hline
+\end{tabular}
+\newline\newline
+translates into:
+\newline\newline
+\begin{tabular}{|l|}\hline
+\texttt{fun f }\(v_{1}\ldots v_{i-1}\)\texttt{ xs }\(v_{i+1}\ldots v_{n}\)\texttt{ =}\\
+\hspace{0.5in}\texttt{foldr (fn (x, acc) => g }\(e_{1}\ldots e_{j-1}\)\texttt{ acc } \(e_{j+1}\ldots e_{m}\)\texttt{) } $e$ \texttt{ xs}\\
+\hline
+\end{tabular}
 \end{center}
-\caption{A simplistic pattern for identifying explicit recursion that can be replaced with a fold.}
+\caption{A simplistic pattern for identifying explicit recursion that can be replaced with a fold. The $e_{1}\ldots e_{m}$ may use the bound variable \texttt{x}
+which is why the cons cell and the combining function of the fold both refer to this variable \texttt{x} with the same name.}
 \label{fig:folddef}
 \end{figure}
 
@@ -457,7 +468,7 @@ to correctly parse infix expressions.
 After performing an initial analysis, we looked at some
 random samples of the violations we found.
 Three are shown in Figure~\ref{fig:fold}.
-A good number of these fold opportunities cannot actually
+A good number of these ``fold opportunities'' are false positive: they cannot actually
 be written as fold because on encountering the null list, an error or
 some other imperative code is executed. Example 1 falls under this category:
 we see that the imperative function \texttt{bug} is executed
@@ -467,7 +478,7 @@ fold on the null list defines the default accumulator and none
 can be defined here.
 That this example was found tells us that our search algorithm is unsound.
 
-In example 2, we cannot use a fold because 
+In example 2, we cannot use a fold because
 there is a recursive call on \texttt{xr'} instead of \texttt{xr},
 which in essence, skips an element in the list traversal.
 Fold, on the other hand, examines every element in the list.
@@ -589,7 +600,7 @@ the indentations of their parents.
 
 We ran into two complications with the analysis. The first is that when we have tabs present,
 \texttt{SourceMap} treats the tab character has having a width of 1. Clearly,
-this is not what we want. However, this problem is easily remedied 
+this is not what we want. However, this problem is easily remedied
 by expanding tab characters.
 We can try to replace the tab with enough spaces such that
 the last space ends on a column that is a multiple of 2, 4, or 8 (corresponding to those tab sizes)
@@ -623,7 +634,7 @@ Such a principled approach allows us to reason better about correctness and
 removes the constraints imposed by having a fixed order of execution \cite{Hug90}. Therefore,
 it behooves us to examine whether such imperative features are necessary or avoidable.
 
-Any expression in ML can have a side effect. 
+Any expression in ML can have a side effect.
 We are interested in expressions evaluated only for their side effects.
 In Standard ML, there are two main constructs in terms of expressions that fit this mold:
 (1)~the \texttt{while} expression and (2)~a list of expression separated by semicolons (similar to the \texttt{begin...end} syntax of Pascal) \cite{Ull98}.
@@ -828,13 +839,14 @@ abstraction and modularity by using structures, signatures, and functors.
 Project & Files with module declarations & Fraction & Files with only module declarations & Fraction \\ \hline\hline
 SML/NJ & 297 & 0.99 & 297 & 0.99 \\
 MLKit & 1,308 & 0.99 & 1,270 & 0.96 \\
-FoxNet & 30 & 0.42 (0.94) & 29 & 0.40 (0.91) \\
+FoxNet (whole) & 30 & 0.42 & 29 & 0.40 \\
+FoxNet (pruned) & 30 & 0.94 & 29 & 0.91 \\
 Til & 445 & 0.97 & 443 & 0.96 \\
 MLton & 397 & 0.94 & 386 & 0.91 \\ \hline
 \end{tabular}
 \caption{Proportion of files that, at top level, contain module declarations or only contain module declarations.
-For FoxNet, the fractions in parentheses are obtained if we a certain group files that contain
-directory listings (see text).}
+For FoxNet, the whole set of 72 files contains all of the files used in previous analyses, while
+the pruned set of 32 files omits files with directory listings (see text).}
 \label{table:module}
 \end{table}
 
@@ -851,7 +863,7 @@ suggests that these values are not used at all.
 Because it is unclear what role these declarations play, we hesitate to remove
 them completely from our overall analysis. We will consider
 how their exclusion affects the modularity of FoxNet.
-The values in parentheses in Table~\ref{table:module} show what
+The second entry for FoxNet in Table~\ref{table:module} shows what
 fraction of source files in FoxNet contain at least one or only module declarations at top level
 if the files with these \texttt{val} declarations are excluded. We see that
 with this pruning of the data, FoxNet also shows a high degree of modularity as we have defined it.
